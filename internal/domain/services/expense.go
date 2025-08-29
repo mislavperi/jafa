@@ -1,14 +1,24 @@
 package services
 
-import "github.com/mislavperi/jafa/internal/domain/models"
+import (
+	"context"
 
-type ExpenseService struct{}
+	"github.com/mislavperi/jafa/internal/domain/models"
+	psql "github.com/mislavperi/jafa/internal/infrastructure/psql/repositories"
+)
 
-func NewExpenseService() *ExpenseService {
-	return &ExpenseService{}
+type ExpenseService struct {
+	Queries *psql.Queries
 }
 
-func (es *ExpenseService) GetById() (models.Expense, error) {
+func NewExpenseService(queries *psql.Queries) *ExpenseService {
+	return &ExpenseService{
+		Queries: queries,
+	}
+}
+
+func (es *ExpenseService) GetById(id int64) (models.Expense, error) {
+	es.Queries.GetExpenseById(context.Background(), id)
 	return models.Expense{}, nil
 }
 

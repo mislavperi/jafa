@@ -5,21 +5,25 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mislavperi/jafa/internal/api/controllers"
 )
 
-type API struct {
+type Api struct {
 	Gin  *gin.Engine
 	port uint
 }
 
-func NewAPI() *API {
-	return &API{
-		Gin: gin.Default(),
-		port: 8080,
+func NewApi(expenseController *controllers.ExpenseController, port uint) *Api {
+	api := &Api{
+		Gin:  gin.Default(),
+		port: port,
 	}
+
+	api.registerRoutes(expenseController)
+	return api
 }
 
-func (a *API) Start(ctx context.Context) {
+func (a *Api) Start(ctx context.Context) {
 	errs := make(chan error, 1)
 
 	go func() {
@@ -32,4 +36,9 @@ func (a *API) Start(ctx context.Context) {
 	case <-ctx.Done():
 		return
 	}
+}
+
+func (a *Api) registerRoutes(expenseController *controllers.ExpenseController) {
+	expenseGroup := a.Gin.Group("/api/expense")
+	expenseGroup.GET("/:id", expenseController.GetExpenseById())
 }

@@ -9,13 +9,13 @@ import (
 	"context"
 )
 
-const getExpense = `-- name: GetExpense :one
+const getExpenseById = `-- name: GetExpenseById :one
 SELECT id, name FROM expenses 
 WHERE id=$1 LIMIT 1
 `
 
-func (q *Queries) GetExpense(ctx context.Context, id int64) (Expense, error) {
-	row := q.db.QueryRow(ctx, getExpense, id)
+func (q *Queries) GetExpenseById(ctx context.Context, id int64) (Expense, error) {
+	row := q.db.QueryRow(ctx, getExpenseById, id)
 	var i Expense
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
