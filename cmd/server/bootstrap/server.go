@@ -1,14 +1,15 @@
 package bootstrap
 
 import (
-	"github.com/mislavperi/jafa/internal/api"
-	"github.com/mislavperi/jafa/internal/api/controllers"
 	"github.com/mislavperi/jafa/internal/domain/services"
+	"github.com/mislavperi/jafa/internal/infrastructure/gintemplrenderer"
 	"github.com/mislavperi/jafa/internal/infrastructure/psql"
 	psqlrepositories "github.com/mislavperi/jafa/internal/infrastructure/psql/repositories"
+	server "github.com/mislavperi/jafa/internal/server"
+	"github.com/mislavperi/jafa/internal/server/controllers"
 )
 
-func Api() *api.Api {
+func Server() *server.Server {
 	connPool, err := psql.NewDatabaseConnection()
 	if err != nil {
 		panic(err)
@@ -19,6 +20,11 @@ func Api() *api.Api {
 
 	expenseController := controllers.NewExpenseController(expenseService)
 
-	api := api.NewApi(expenseController, 8080)
-	return api
+	server := server.NewServer(expenseController, 8080)
+
+	ginHtmlRenderer := server.Gin.HTMLRender
+	server.Gin.HTMLRender = &gintemplrenderer.HTMLTemplRenderer{FallbackHtmlRenderer: ginHtmlRenderer}
+	server.Gin.SetTrustedProxies(nil)
+
+	return server
 }

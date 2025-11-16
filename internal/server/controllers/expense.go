@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mislavperi/jafa/internal/domain/services"
+	"github.com/mislavperi/jafa/web/templates"
 )
 
 type ExpenseController struct {
@@ -25,10 +26,10 @@ func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 			ctx.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
-		expense, err := ec.expenseService.GetById(int64(id))
+		_, err = ec.expenseService.GetById(int64(id))
 		if err != nil {
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 		}
-		ctx.JSON(http.StatusOK, expense)
+		ctx.HTML(http.StatusOK, "", templates.Hello("my name"))
 	}
 }
