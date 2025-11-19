@@ -29,6 +29,6 @@ func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 		if err != nil {
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 		}
-		ctx.JSON(http.StatusAccepted, nil)
+		ctx.JSON(http.StatusAccepted, {})
 	}
 }
