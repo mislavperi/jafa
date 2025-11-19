@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 
-	"github.com/mislavperi/jafa/internal/domain/models"
-	psql "github.com/mislavperi/jafa/internal/infrastructure/psql/repositories"
+	"github.com/mislavperi/jafa/server/internal/domain/models"
+	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 )
 
 type ExpenseService struct {

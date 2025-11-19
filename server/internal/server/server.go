@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/internal/server/controllers"
+	"github.com/mislavperi/jafa/server/internal/server/controllers"
 )
 
 type Server struct {

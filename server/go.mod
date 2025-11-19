@@ -1,4 +1,4 @@
-module github.com/mislavperi/jafa
+module github.com/mislavperi/jafa/server
 
 go 1.25.0
 

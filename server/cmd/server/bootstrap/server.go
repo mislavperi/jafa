@@ -1,12 +1,12 @@
 package bootstrap
 
 import (
-	"github.com/mislavperi/jafa/internal/domain/services"
-	"github.com/mislavperi/jafa/internal/infrastructure/gintemplrenderer"
-	"github.com/mislavperi/jafa/internal/infrastructure/psql"
-	psqlrepositories "github.com/mislavperi/jafa/internal/infrastructure/psql/repositories"
-	server "github.com/mislavperi/jafa/internal/server"
-	"github.com/mislavperi/jafa/internal/server/controllers"
+	"github.com/mislavperi/jafa/server/internal/domain/services"
+	"github.com/mislavperi/jafa/server/internal/infrastructure/gintemplrenderer"
+	"github.com/mislavperi/jafa/server/internal/infrastructure/psql"
+	psqlrepositories "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
+	server "github.com/mislavperi/jafa/server/internal/server"
+	"github.com/mislavperi/jafa/server/internal/server/controllers"
 )
 
 func Server() *server.Server {

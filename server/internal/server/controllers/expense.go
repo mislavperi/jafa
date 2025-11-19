@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/internal/domain/services"
+	"github.com/mislavperi/jafa/server/internal/domain/services"
 	"github.com/mislavperi/jafa/web/templates"
 )
 
