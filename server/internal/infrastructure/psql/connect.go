@@ -7,7 +7,7 @@ import (
 )
 
 func NewDatabaseConnection() (*pgxpool.Pool, error) {
-	connPool, err := pgxpool.New(context.Background(), "postgres://postgres:secretpass@localhost:5432/jafa")
+	connPool, err := pgxpool.New(context.Background(), "postgres://postgres:password@localhost:5432/jafa")
 	if err != nil {
 		return nil, err
 	}

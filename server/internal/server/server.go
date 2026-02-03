@@ -40,5 +40,6 @@ func (s *Server) Start(ctx context.Context) {
 
 func (s *Server) registerRoutes(expenseController *controllers.ExpenseController) {
 	expenseGroup := s.Gin.Group("/expense")
+	expenseGroup.GET("/", expenseController.GetAllExpenses())
 	expenseGroup.GET("/:id", expenseController.GetExpenseById())
 }

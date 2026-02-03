@@ -17,6 +17,14 @@ func NewExpenseService(queries *psql.Queries) *ExpenseService {
 	}
 }
 
+func (es *ExpenseService) GetAllExpenses() ([]models.Expense, error) {
+	_, err := es.Queries.GetAllExpenses(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	return []models.Expense{}, nil
+}
+
 func (es *ExpenseService) GetById(id int64) (models.Expense, error) {
 	es.Queries.GetExpenseById(context.Background(), id)
 	return models.Expense{}, nil

@@ -1,11 +1,14 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+
+import Root from "./core/views/Root.vue"
+import ExpansePage from "./modules/expense/views/ExpensePage.vue";
+
+</script>
 
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <Root>
+    <ExpansePage />
+  </Root>
 </template>
 
 <style scoped></style>

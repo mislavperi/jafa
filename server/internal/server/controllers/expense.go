@@ -18,6 +18,16 @@ func NewExpenseController(expenseService *services.ExpenseService) *ExpenseContr
 	}
 }
 
+func (ec *ExpenseController) GetAllExpenses() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		expenses, err := ec.expenseService.GetAllExpenses()
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+		}
+		ctx.JSON(http.StatusOK, expenses)
+	}
+}
+
 func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := strconv.Atoi(ctx.Param("id"))
@@ -25,10 +35,10 @@ func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 			ctx.AbortWithError(http.StatusBadRequest, err)
 			return
 		}
-		_, err = ec.expenseService.GetById(int64(id))
+		expense, err := ec.expenseService.GetById(int64(id))
 		if err != nil {
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 		}
-		ctx.JSON(http.StatusAccepted, nil)
+		ctx.JSON(http.StatusOK, expense)
 	}
 }
