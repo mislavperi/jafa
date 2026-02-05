@@ -10,7 +10,7 @@ import (
 )
 
 const getAllExpenses = `-- name: GetAllExpenses :many
-SELECT id, name from expenses
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at from expenses
 `
 
 func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
@@ -22,7 +22,16 @@ func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
 	var items []Expense
 	for rows.Next() {
 		var i Expense
-		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Amount,
+			&i.Cost,
+			&i.ItemID,
+			&i.IsDeleted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -34,13 +43,22 @@ func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
 }
 
 const getExpenseById = `-- name: GetExpenseById :one
-SELECT id, name FROM expenses 
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at FROM expenses 
 WHERE id=$1 LIMIT 1
 `
 
 func (q *Queries) GetExpenseById(ctx context.Context, id int64) (Expense, error) {
 	row := q.db.QueryRow(ctx, getExpenseById, id)
 	var i Expense
-	err := row.Scan(&i.ID, &i.Name)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Amount,
+		&i.Cost,
+		&i.ItemID,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }

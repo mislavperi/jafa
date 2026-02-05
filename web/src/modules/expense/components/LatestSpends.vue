@@ -1,29 +1,23 @@
 <script setup lang="ts">
-import { ref} from "vue"
-
 import Panel from "primevue/panel"
 import DataTable from "primevue/datatable"
 import Column from "primevue/column"
-import ColumnGroup from "primevue/columngroup"
 
-type MockSpend = {
-    name: string
-    value: string
-}
+import { useExpenses } from "../composables/useExpenses"
 
-const mockSpends = ref<MockSpend[]>([
-    {
-    name: "Groceries",
-    value: "70"
-    }
-])
+const { data: expenses, isLoading, isError } = useExpenses()
 </script>
 
 <template>
-<Panel header="I am a latest expense page, see what you spent on last">
-    <DataTable :value="mockSpends" table-style="min-width: 50rem" >
-        <Column field="name" header="Name"></Column>
-        <Column field="value" header="Value"></Column>
-    </DataTable>
-</Panel>
+    <div class="grid grid-cols-2 gap-4">
+        <Panel header="I am a latest expense page, see what you spent on last">
+            <DataTable :value="expenses" :loading="isLoading" paginator :rows="5">
+                <Column field="name" header="Name"></Column>
+                <Column field="amount" header="Amount"></Column>
+            </DataTable>
+        </Panel>
+        <Panel header="I am a latest expense page, see what you spent on last">
+            <p>Some other content</p>
+        </Panel>
+    </div>
 </template>

@@ -4,7 +4,47 @@
 
 package psql
 
+import (
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
 type Expense struct {
-	ID   int64
-	Name string
+	ID        int64
+	Name      string
+	Amount    pgtype.Numeric
+	Cost      pgtype.Numeric
+	ItemID    pgtype.Int8
+	IsDeleted bool
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type ExpensesTag struct {
+	ExpenseID int64
+	TagID     int64
+}
+
+type Item struct {
+	ID        int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	IsDeleted bool
+}
+
+type ItemPrice struct {
+	ID        int64
+	ItemID    int64
+	Price     pgtype.Numeric
+	CreatedAt pgtype.Timestamptz
+	IsLatest  bool
+	IsDeleted bool
+}
+
+type Tag struct {
+	ID        int64
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	IsDeleted bool
 }

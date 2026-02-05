@@ -11,3 +11,5 @@ web/.wrangler
 web/.output
 web/.vinxi
 web/todos.json
+
+server/.env

@@ -1,10 +1,10 @@
 version: "2"
 sql:
-  - engine: "postgresql"
-    queries: "internal/infrastructure/psql/query.sql"
-    schema: "internal/infrastructure/psql/schema.sql"
-    gen:
-      go:
-        package: "psql"
-        out: "./internal/infrastructure/psql/repositories"
-        sql_package: "pgx/v5"
+- engine: "postgresql"
+  queries: "internal/infrastructure/psql/query.sql"
+  schema: "internal/infrastructure/psql/migrations"
+  gen:
+    go:
+      package: "psql"
+      out: "./internal/infrastructure/psql/repositories"
+      sql_package: "pgx/v5"

@@ -1,0 +1,57 @@
+-- migrate:up
+CREATE TABLE item (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE item_price (
+    id BIGSERIAL PRIMARY KEY,
+    item_id BIGINT NOT NULL,
+    price DECIMAL(10, 3) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_latest BOOLEAN NOT NULL DEFAULT TRUE,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (item_id) REFERENCES item (id) ON DELETE CASCADE
+);
+
+CREATE TABLE tags (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE expenses_tags (
+    expense_id BIGINT NOT NULL,
+    tag_id BIGINT NOT NULL,
+    PRIMARY KEY (expense_id, tag_id),
+    FOREIGN KEY (expense_id) REFERENCES expenses (id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
+);
+
+ALTER TABLE expenses
+    ADD COLUMN cost DECIMAL(10, 3) NOT NULL DEFAULT 0,
+    ADD COLUMN item_id BIGINT,
+    ADD COLUMN is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ADD CONSTRAINT fk_expenses_item FOREIGN KEY (item_id) REFERENCES item (id) ON DELETE SET NULL;
+
+
+-- migrate:down
+ALTER TABLE expenses
+    DROP CONSTRAINT IF EXISTS fk_expenses_item,
+    DROP COLUMN IF EXISTS updated_at,
+    DROP COLUMN IF EXISTS created_at,
+    DROP COLUMN IF EXISTS is_deleted,
+    DROP COLUMN IF EXISTS item_id,
+    DROP COLUMN IF EXISTS cost;
+
+DROP TABLE IF EXISTS expenses_tags;
+DROP TABLE IF EXISTS tags;
+DROP TABLE IF EXISTS item_price;
+DROP TABLE IF EXISTS item;
