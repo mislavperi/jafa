@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Bamako (JAFA) is a personal finance/expense tracking application with a Go backend and Vue 3 frontend, backed by PostgreSQL.
+JAFA (Just Another Finance App) is a personal finance/expense tracking application with a Go backend and Vue 3 frontend, backed by PostgreSQL.
 
 ## Tech Stack
 
