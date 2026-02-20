@@ -65,6 +65,51 @@ func (es *ExpenseService) GetDailySpend(months int32) ([]models.DailySpend, erro
 	return result, nil
 }
 
+func (es *ExpenseService) GetExpensesByMonth(year, month int32) ([]models.Expense, error) {
+	expenses, err := es.Queries.GetExpensesByMonth(context.Background(), psql.GetExpensesByMonthParams{
+		Year:  year,
+		Month: month,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return es.Mapper.MapManyToDomain(expenses)
+}
+
+func (es *ExpenseService) GetFirstExpenseDate() (string, error) {
+	result, err := es.Queries.GetFirstExpenseDate(context.Background())
+	if err != nil {
+		return "", err
+	}
+	s, ok := result.(string)
+	if !ok {
+		return "", nil
+	}
+	return s, nil
+}
+
+func (es *ExpenseService) GetDailySpendForMonth(year, month int32) ([]models.DailySpend, error) {
+	rows, err := es.Queries.GetDailySpendForMonth(context.Background(), psql.GetDailySpendForMonthParams{
+		Year:  year,
+		Month: month,
+	})
+	if err != nil {
+		return nil, err
+	}
+	result := make([]models.DailySpend, 0, len(rows))
+	for _, row := range rows {
+		f, err := row.Total.Float64Value()
+		if err != nil || !f.Valid {
+			return nil, err
+		}
+		result = append(result, models.DailySpend{
+			Day:   row.Day.Time.Format("2006-01-02"),
+			Total: float32(f.Float64),
+		})
+	}
+	return result, nil
+}
+
 func (es *ExpenseService) GetById(id int64) (models.Expense, error) {
 	expense, err := es.Queries.GetExpenseById(context.Background(), id)
 	if err != nil {

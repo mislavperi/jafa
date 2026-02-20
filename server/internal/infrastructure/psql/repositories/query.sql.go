@@ -78,6 +78,46 @@ func (q *Queries) GetDailySpend(ctx context.Context, months int32) ([]GetDailySp
 	return items, nil
 }
 
+const getDailySpendForMonth = `-- name: GetDailySpendForMonth :many
+SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+FROM expenses
+WHERE is_deleted = false
+  AND EXTRACT(YEAR FROM created_at) = $1::int
+  AND EXTRACT(MONTH FROM created_at) = $2::int
+GROUP BY created_at::date
+ORDER BY day
+`
+
+type GetDailySpendForMonthParams struct {
+	Year  int32
+	Month int32
+}
+
+type GetDailySpendForMonthRow struct {
+	Day   pgtype.Date
+	Total pgtype.Numeric
+}
+
+func (q *Queries) GetDailySpendForMonth(ctx context.Context, arg GetDailySpendForMonthParams) ([]GetDailySpendForMonthRow, error) {
+	rows, err := q.db.Query(ctx, getDailySpendForMonth, arg.Year, arg.Month)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDailySpendForMonthRow
+	for rows.Next() {
+		var i GetDailySpendForMonthRow
+		if err := rows.Scan(&i.Day, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getExpenseById = `-- name: GetExpenseById :one
 SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at FROM expenses 
 WHERE id=$1 LIMIT 1
@@ -97,6 +137,62 @@ func (q *Queries) GetExpenseById(ctx context.Context, id int64) (Expense, error)
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getExpensesByMonth = `-- name: GetExpensesByMonth :many
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at
+FROM expenses
+WHERE is_deleted = false
+  AND EXTRACT(YEAR FROM created_at) = $1::int
+  AND EXTRACT(MONTH FROM created_at) = $2::int
+ORDER BY created_at
+`
+
+type GetExpensesByMonthParams struct {
+	Year  int32
+	Month int32
+}
+
+func (q *Queries) GetExpensesByMonth(ctx context.Context, arg GetExpensesByMonthParams) ([]Expense, error) {
+	rows, err := q.db.Query(ctx, getExpensesByMonth, arg.Year, arg.Month)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Expense
+	for rows.Next() {
+		var i Expense
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Amount,
+			&i.Cost,
+			&i.ItemID,
+			&i.IsDeleted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getFirstExpenseDate = `-- name: GetFirstExpenseDate :one
+SELECT COALESCE(TO_CHAR(MIN(created_at::date), 'YYYY-MM-DD'), '') AS first_date
+FROM expenses
+WHERE is_deleted = false
+`
+
+func (q *Queries) GetFirstExpenseDate(ctx context.Context) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getFirstExpenseDate)
+	var first_date interface{}
+	err := row.Scan(&first_date)
+	return first_date, err
 }
 
 const getTotalSpendThisMonth = `-- name: GetTotalSpendThisMonth :one

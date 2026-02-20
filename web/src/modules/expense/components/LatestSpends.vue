@@ -1,25 +1,69 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, watchEffect } from 'vue'
 import Panel from 'primevue/panel'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Chart from 'primevue/chart'
+import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 
-import { useExpenses } from '../composables/useExpenses'
+import { useExpenses, useFirstExpenseDate, useExpensesByMonth } from '../composables/useExpenses'
 
-const { data: expenses, isLoading } = useExpenses()
+// Recent expenses (all, not month-filtered)
+const { data: allExpenses, isLoading: isLoadingExpenses } = useExpenses()
 
+// Month selector for the pie chart
+type MonthOption = { label: string; year: number; month: number }
+
+const { data: firstExpenseDateData, isLoading: isLoadingFirst } = useFirstExpenseDate()
+
+const availableMonths = computed<MonthOption[]>(() => {
+  const firstDateStr = firstExpenseDateData.value?.firstDate
+  if (!firstDateStr) return []
+
+  const first = new Date(firstDateStr + 'T00:00:00')
+  const today = new Date()
+  const months: MonthOption[] = []
+
+  const d = new Date(first.getFullYear(), first.getMonth(), 1)
+  while (d.getFullYear() < today.getFullYear() || (d.getFullYear() === today.getFullYear() && d.getMonth() <= today.getMonth())) {
+    months.push({
+      label: d.toLocaleDateString('default', { month: 'long', year: 'numeric' }),
+      year: d.getFullYear(),
+      month: d.getMonth() + 1,
+    })
+    d.setMonth(d.getMonth() + 1)
+  }
+
+  return months.reverse()
+})
+
+const selectedMonth = ref<MonthOption | null>(null)
+
+watchEffect(() => {
+  if (selectedMonth.value === null && availableMonths.value.length > 0) {
+    const today = new Date()
+    const current = availableMonths.value.find(
+      m => m.year === today.getFullYear() && m.month === today.getMonth() + 1,
+    )
+    selectedMonth.value = current ?? availableMonths.value[0] ?? null
+  }
+})
+
+const selectedYear = computed(() => selectedMonth.value?.year ?? new Date().getFullYear())
+const selectedMonthNum = computed(() => selectedMonth.value?.month ?? new Date().getMonth() + 1)
+
+const { data: monthExpenses, isLoading: isLoadingMonth } = useExpensesByMonth(selectedYear, selectedMonthNum)
+
+// Search / filter for pie chart
 const searchQuery = ref('')
 const selectedExpenseNames = ref(new Set<string>())
 
 watch(searchQuery, () => {
   selectedExpenseNames.value = new Set()
 })
-
-const tableExpenses = computed(() => expenses.value ?? [])
 
 const COLORS = [
   '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6',
@@ -33,8 +77,8 @@ interface AggregatedExpense {
 }
 
 const aggregatedExpenses = computed<AggregatedExpense[]>(() => {
-  if (!expenses.value) return []
-  let source = expenses.value
+  if (!monthExpenses.value) return []
+  let source = monthExpenses.value
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     source = source.filter((e) => e.name.toLowerCase().includes(query))
@@ -75,19 +119,11 @@ const chartData = computed(() => {
 })
 
 const chartOptions = {
-  layout: {
-    padding: 5,
-  },
-  animation: {
-    animateRotate: false,
-    animateScale: false,
-    duration: 300,
-  },
+  layout: { padding: 5 },
+  animation: { animateRotate: false, animateScale: false, duration: 300 },
   plugins: {
     legend: { display: false },
-    tooltip: {
-      filter: (tooltipItem: any) => tooltipItem.raw > 0,
-    },
+    tooltip: { filter: (tooltipItem: any) => tooltipItem.raw > 0 },
   },
   responsive: true,
   maintainAspectRatio: false,
@@ -118,8 +154,8 @@ function clearSelection() {
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 p-2 sm:p-4">
     <Panel header="Recent Expenses">
       <DataTable
-        :value="tableExpenses"
-        :loading="isLoading"
+        :value="allExpenses ?? []"
+        :loading="isLoadingExpenses"
         paginator
         :rows="5"
         scrollable
@@ -135,6 +171,16 @@ function clearSelection() {
     </Panel>
 
     <Panel header="Expense Breakdown">
+      <template #icons>
+        <Select
+          v-model="selectedMonth"
+          :options="availableMonths"
+          option-label="label"
+          size="small"
+          :loading="isLoadingFirst"
+          placeholder="Select month"
+        />
+      </template>
       <div class="flex flex-col gap-3">
         <div v-if="aggregatedExpenses.length" class="flex flex-col md:flex-row gap-3 md:h-[350px]">
           <div class="relative min-w-0 h-[200px] md:h-full md:flex-1">
@@ -179,7 +225,7 @@ function clearSelection() {
             </div>
           </div>
         </div>
-        <div v-else class="text-center text-surface-500 py-8">
+        <div v-else-if="!isLoadingMonth" class="text-center text-surface-500 py-8">
           No expenses found
         </div>
 
