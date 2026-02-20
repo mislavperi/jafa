@@ -42,4 +42,8 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	expenseGroup := s.Gin.Group("/expense")
 	expenseGroup.GET("/", expenseController.GetAllExpenses())
 	expenseGroup.GET("/:id", expenseController.GetExpenseById())
+
+	expenseStatsGroup := s.Gin.Group("/expense-stats")
+	expenseStatsGroup.GET("/monthly-total", expenseController.GetTotalSpendThisMonth())
+	expenseStatsGroup.GET("/daily-spend", expenseController.GetDailySpend())
 }

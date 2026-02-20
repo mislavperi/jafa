@@ -7,6 +7,8 @@ package psql
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getAllExpenses = `-- name: GetAllExpenses :many
@@ -42,6 +44,40 @@ func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
 	return items, nil
 }
 
+const getDailySpend = `-- name: GetDailySpend :many
+SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+FROM expenses
+WHERE is_deleted = false
+  AND created_at >= (date_trunc('month', CURRENT_TIMESTAMP) - ($1::int || ' months')::interval)
+GROUP BY created_at::date
+ORDER BY day
+`
+
+type GetDailySpendRow struct {
+	Day   pgtype.Date
+	Total pgtype.Numeric
+}
+
+func (q *Queries) GetDailySpend(ctx context.Context, months int32) ([]GetDailySpendRow, error) {
+	rows, err := q.db.Query(ctx, getDailySpend, months)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDailySpendRow
+	for rows.Next() {
+		var i GetDailySpendRow
+		if err := rows.Scan(&i.Day, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getExpenseById = `-- name: GetExpenseById :one
 SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at FROM expenses 
 WHERE id=$1 LIMIT 1
@@ -61,4 +97,18 @@ func (q *Queries) GetExpenseById(ctx context.Context, id int64) (Expense, error)
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getTotalSpendThisMonth = `-- name: GetTotalSpendThisMonth :one
+SELECT COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+FROM expenses
+WHERE is_deleted = false
+  AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+`
+
+func (q *Queries) GetTotalSpendThisMonth(ctx context.Context) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, getTotalSpendThisMonth)
+	var total pgtype.Numeric
+	err := row.Scan(&total)
+	return total, err
 }
