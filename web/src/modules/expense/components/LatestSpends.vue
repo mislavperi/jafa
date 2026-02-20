@@ -136,16 +136,16 @@ function clearSelection() {
 
     <Panel header="Expense Breakdown">
       <div class="flex flex-col gap-3">
-        <div v-if="aggregatedExpenses.length" class="flex flex-col md:flex-row gap-3 md:h-[350px] overflow-hidden">
-          <div class="w-full md:flex-1 min-w-0 h-[200px] md:h-full">
+        <div v-if="aggregatedExpenses.length" class="flex flex-col md:flex-row gap-3 md:h-[350px]">
+          <div class="relative min-w-0 h-[200px] md:h-full md:flex-1">
             <Chart
               type="pie"
               :data="chartData"
               :options="chartOptions"
-              class="w-full h-full"
+              class="absolute inset-0 w-full h-full"
             />
           </div>
-          <div class="flex flex-col gap-1 min-h-0 md:w-[250px] md:min-w-[150px] max-h-[200px] md:max-h-none md:h-full">
+          <div class="flex flex-col gap-1 min-h-0 md:w-2/5 md:max-w-[250px] md:h-full md:overflow-hidden">
             <IconField class="mb-1 shrink-0">
               <InputIcon class="pi pi-search" />
               <InputText
@@ -155,7 +155,7 @@ function clearSelection() {
                 size="small"
               />
             </IconField>
-            <div class="overflow-y-auto flex flex-col gap-0.5 min-h-0 flex-1">
+            <div class="overflow-y-auto flex flex-col gap-0.5 min-h-0 flex-1 max-h-[150px] md:max-h-none">
               <div
                 v-for="item in aggregatedExpenses"
                 :key="item.name"
