@@ -12,3 +12,7 @@ export interface DailySpend {
   day: string
   total: number
 }
+
+export interface FirstExpenseDate {
+  firstDate: string
+}

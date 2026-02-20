@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/vue-query'
-import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend } from '../api/expense'
+import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend, getFirstExpenseDate, getDailySpendForMonth, getExpensesByMonth } from '../api/expense'
 import type { Ref } from 'vue'
 
 export function useExpenses() {
@@ -27,5 +27,26 @@ export function useDailySpend(months: Ref<number>) {
   return useQuery({
     queryKey: ['expenses', 'daily-spend', months],
     queryFn: () => getDailySpend(months.value),
+  })
+}
+
+export function useFirstExpenseDate() {
+  return useQuery({
+    queryKey: ['expenses', 'first-expense-date'],
+    queryFn: getFirstExpenseDate,
+  })
+}
+
+export function useDailySpendForMonth(year: Ref<number>, month: Ref<number>) {
+  return useQuery({
+    queryKey: ['expenses', 'daily-spend-for-month', year, month],
+    queryFn: () => getDailySpendForMonth(year.value, month.value),
+  })
+}
+
+export function useExpensesByMonth(year: Ref<number>, month: Ref<number>) {
+  return useQuery({
+    queryKey: ['expenses', 'by-month', year, month],
+    queryFn: () => getExpensesByMonth(year.value, month.value),
   })
 }

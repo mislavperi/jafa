@@ -8,6 +8,10 @@ import (
 	"github.com/mislavperi/jafa/server/internal/domain/services"
 )
 
+type firstExpenseDateResponse struct {
+	FirstDate string `json:"firstDate"`
+}
+
 type ExpenseController struct {
 	expenseService *services.ExpenseService
 }
@@ -52,6 +56,59 @@ func (ec *ExpenseController) GetDailySpend() gin.HandlerFunc {
 			return
 		}
 		ctx.JSON(http.StatusOK, dailySpend)
+	}
+}
+
+func (ec *ExpenseController) GetFirstExpenseDate() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		date, err := ec.expenseService.GetFirstExpenseDate()
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, firstExpenseDateResponse{FirstDate: date})
+	}
+}
+
+func (ec *ExpenseController) GetDailySpendForMonth() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		year, err := strconv.Atoi(ctx.Query("year"))
+		if err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		month, err := strconv.Atoi(ctx.Query("month"))
+		if err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		dailySpend, err := ec.expenseService.GetDailySpendForMonth(int32(year), int32(month))
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, dailySpend)
+	}
+}
+
+func (ec *ExpenseController) GetExpensesByMonth() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		year, err := strconv.Atoi(ctx.Query("year"))
+		if err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		month, err := strconv.Atoi(ctx.Query("month"))
+		if err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		expenses, err := ec.expenseService.GetExpensesByMonth(int32(year), int32(month))
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, expenses)
 	}
 }
 
