@@ -32,6 +32,39 @@ func (es *ExpenseService) GetAllExpenses() ([]models.Expense, error) {
 	return mappedExpenses, nil
 }
 
+func (es *ExpenseService) GetTotalSpendThisMonth() (models.MonthlyTotal, error) {
+	total, err := es.Queries.GetTotalSpendThisMonth(context.Background())
+	if err != nil {
+		return models.MonthlyTotal{}, err
+	}
+	f, err := total.Float64Value()
+	if err != nil || !f.Valid {
+		return models.MonthlyTotal{}, err
+	}
+	return models.MonthlyTotal{
+		Total: float32(f.Float64),
+	}, nil
+}
+
+func (es *ExpenseService) GetDailySpend(months int32) ([]models.DailySpend, error) {
+	rows, err := es.Queries.GetDailySpend(context.Background(), months)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]models.DailySpend, 0, len(rows))
+	for _, row := range rows {
+		f, err := row.Total.Float64Value()
+		if err != nil || !f.Valid {
+			return nil, err
+		}
+		result = append(result, models.DailySpend{
+			Day:   row.Day.Time.Format("2006-01-02"),
+			Total: float32(f.Float64),
+		})
+	}
+	return result, nil
+}
+
 func (es *ExpenseService) GetById(id int64) (models.Expense, error) {
 	expense, err := es.Queries.GetExpenseById(context.Background(), id)
 	if err != nil {

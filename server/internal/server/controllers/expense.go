@@ -28,6 +28,33 @@ func (ec *ExpenseController) GetAllExpenses() gin.HandlerFunc {
 	}
 }
 
+func (ec *ExpenseController) GetTotalSpendThisMonth() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		total, err := ec.expenseService.GetTotalSpendThisMonth()
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, total)
+	}
+}
+
+func (ec *ExpenseController) GetDailySpend() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		v, err := strconv.Atoi(ctx.Query("months"))
+		if err != nil {
+			ctx.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		dailySpend, err := ec.expenseService.GetDailySpend(int32(v))
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, dailySpend)
+	}
+}
+
 func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id, err := strconv.Atoi(ctx.Param("id"))
