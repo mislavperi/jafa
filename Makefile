@@ -21,9 +21,10 @@ migrate: db
 seed: migrate
 	cd server && go run ./scripts/seed.go
 
-## Start the Go backend (blocking)
+## Start the Go backend with hot-reload (requires air: go install github.com/air-verse/air@latest)
 server:
-	cd server && go run ./cmd/main.go
+	@command -v air >/dev/null 2>&1 || { echo "air not found. Install with: go install github.com/air-verse/air@latest"; exit 1; }
+	cd server && air
 
 ## Install frontend deps and start dev server (blocking)
 web:
@@ -31,9 +32,10 @@ web:
 
 ## Start db + backend + frontend
 dev: db
+	@command -v air >/dev/null 2>&1 || { echo "air not found. Install with: go install github.com/air-verse/air@latest"; exit 1; }
 	@echo "Starting backend and frontend..."
 	@trap 'kill 0' INT TERM; \
-		(cd server && go run ./cmd/main.go) & \
+		(cd server && air) & \
 		(cd web && npm install >/dev/null 2>&1 && npm run dev) & \
 		wait
 
