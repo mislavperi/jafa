@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import Root from './core/views/Root.vue'
-import ExpansePage from './modules/expense/views/ExpensePage.vue'
+import { RouterView } from 'vue-router'
 </script>
 
 <template>
-  <Root>
-    <ExpansePage />
-  </Root>
+  <RouterView />
 </template>
-
-<style scoped></style>

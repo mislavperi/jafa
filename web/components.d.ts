@@ -12,6 +12,11 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    Button: typeof import('primevue/button')['default']
+    InputText: typeof import('primevue/inputtext')['default']
+    Message: typeof import('primevue/message')['default']
+    OverlayBadge: typeof import('primevue/overlaybadge')['default']
+    Password: typeof import('primevue/password')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
@@ -19,6 +24,11 @@ declare module 'vue' {
 
 // For TSX support
 declare global {
+  const Button: typeof import('primevue/button')['default']
+  const InputText: typeof import('primevue/inputtext')['default']
+  const Message: typeof import('primevue/message')['default']
+  const OverlayBadge: typeof import('primevue/overlaybadge')['default']
+  const Password: typeof import('primevue/password')['default']
   const RouterLink: typeof import('vue-router')['RouterLink']
   const RouterView: typeof import('vue-router')['RouterView']
 }
