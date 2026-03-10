@@ -13,3 +13,4 @@ web/.vinxi
 web/todos.json
 
 server/.env
+server/tmp/
