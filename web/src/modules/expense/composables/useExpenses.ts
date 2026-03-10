@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/vue-query'
-import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend, getFirstExpenseDate, getDailySpendForMonth, getExpensesByMonth } from '../api/expense'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend, getFirstExpenseDate, getDailySpendForMonth, getExpensesByMonth, createExpense } from '../api/expense'
 import type { Ref } from 'vue'
 
 export function useExpenses() {
@@ -48,5 +48,15 @@ export function useExpensesByMonth(year: Ref<number>, month: Ref<number>) {
   return useQuery({
     queryKey: ['expenses', 'by-month', year, month],
     queryFn: () => getExpensesByMonth(year.value, month.value),
+  })
+}
+
+export function useCreateExpense() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    },
   })
 }

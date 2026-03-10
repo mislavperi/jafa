@@ -2,6 +2,22 @@ import type { Expense, MonthlyTotal, DailySpend, FirstExpenseDate } from '../mod
 
 const BASE_URL = '/api/expense/'
 
+export async function createExpense(payload: {
+  name: string
+  amount: number
+  cost: number
+}): Promise<Expense> {
+  const response = await fetch(BASE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to create expense')
+  }
+  return response.json()
+}
+
 export async function getAllExpenses(): Promise<Expense[]> {
   const response = await fetch(BASE_URL)
   if (!response.ok) {

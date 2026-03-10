@@ -10,9 +10,13 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 
 import { useExpenses, useFirstExpenseDate, useExpensesByMonth } from '../composables/useExpenses'
+import ExpenseTagManager from './ExpenseTagManager.vue'
 
 // Recent expenses (all, not month-filtered)
 const { data: allExpenses, isLoading: isLoadingExpenses } = useExpenses()
+
+// Row expansion state
+const expandedRows = ref<Record<number, boolean>>({})
 
 // Month selector for the pie chart
 type MonthOption = { label: string; year: number; month: number }
@@ -156,17 +160,26 @@ function clearSelection() {
       <DataTable
         :value="allExpenses ?? []"
         :loading="isLoadingExpenses"
+        v-model:expandedRows="expandedRows"
+        dataKey="id"
         paginator
         :rows="5"
         scrollable
         scroll-height="flex"
       >
+        <Column expander style="width: 3rem" />
         <Column field="name" header="Name" sortable />
         <Column field="amount" header="Amount" sortable>
           <template #body="{ data }">
             ${{ data.amount.toFixed(2) }}
           </template>
         </Column>
+        <template #expansion="{ data }">
+          <div class="px-2">
+            <p class="text-xs text-surface-400 font-medium mb-1 uppercase tracking-wide">Tags</p>
+            <ExpenseTagManager :expense-id="data.id" />
+          </div>
+        </template>
       </DataTable>
     </Panel>
 

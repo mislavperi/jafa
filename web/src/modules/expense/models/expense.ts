@@ -1,3 +1,8 @@
+export interface Tag {
+  id: number
+  name: string
+}
+
 export interface Expense {
   id: number
   name: string
