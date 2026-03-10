@@ -1,5 +1,6 @@
 include server/.env
 export DATABASE_URL
+export SESSION_SECRET
 
 .PHONY: db migrate seed server web dev stop
 

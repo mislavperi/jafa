@@ -48,3 +48,15 @@ type Tag struct {
 	UpdatedAt pgtype.Timestamptz
 	IsDeleted bool
 }
+
+type User struct {
+	ID        int64
+	Username  string
+	Password  string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	AvatarUrl string
+	FirstName string
+	LastName  string
+	Email     string
+}

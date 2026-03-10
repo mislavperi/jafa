@@ -40,3 +40,10 @@ WHERE is_deleted = false
   AND EXTRACT(MONTH FROM created_at) = sqlc.arg(month)::int
 GROUP BY created_at::date
 ORDER BY day;
+
+-- name: GetUserByUsername :one
+SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 LIMIT 1;
+
+-- name: CreateUser :one
+INSERT INTO users (username, password, first_name, last_name, email) VALUES ($1, $2, $3, $4, $5)
+RETURNING id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at;

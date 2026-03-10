@@ -1,23 +1,31 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import Button from 'primevue/button'
 import Avatar from 'primevue/avatar'
-import OverlayBadge from 'primevue/overlaybadge'
 import Menu from 'primevue/menu'
 import { useDarkModeStore } from '@/stores/darkMode'
+import { useAuthStore } from '@/stores/auth'
+import { useLogout } from '@/modules/auth/composables/useAuth'
 
 const darkMode = useDarkModeStore()
+const authStore = useAuthStore()
+const { mutate: logout } = useLogout()
+
+const avatarLabel = computed(() =>
+  authStore.currentUser?.username?.charAt(0).toUpperCase() ?? 'A'
+)
+
 const menu = ref()
 const menuItems = ref([
-  {
-    label: 'Notifications',
-    icon: 'pi pi-bell',
-    command: () => {}
-  },
   {
     label: 'Edit Profile',
     icon: 'pi pi-user-edit',
     command: () => {}
+  },
+  {
+    label: 'Logout',
+    icon: 'pi pi-sign-out',
+    command: () => logout()
   }
 ])
 
@@ -37,9 +45,13 @@ function toggleMenu(event: Event) {
         rounded
         @click="darkMode.toggle"
       />
-      <OverlayBadge value="4" severity="danger" class="inline-flex cursor-pointer" @click="toggleMenu">
-        <Avatar label="A" size="large" shape="circle" />
-      </OverlayBadge>
+      <img
+        v-if="authStore.currentUser?.avatar_url"
+        :src="authStore.currentUser.avatar_url"
+        class="w-9 h-9 rounded-full cursor-pointer object-cover"
+        @click="toggleMenu"
+      />
+      <Avatar v-else :label="avatarLabel" size="normal" shape="circle" class="cursor-pointer" @click="toggleMenu" />
       <Menu ref="menu" :model="menuItems" :popup="true" />
     </div>
   </nav>
