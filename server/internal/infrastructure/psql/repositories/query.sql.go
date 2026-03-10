@@ -11,6 +11,54 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (username, password, first_name, last_name, email) VALUES ($1, $2, $3, $4, $5)
+RETURNING id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at
+`
+
+type CreateUserParams struct {
+	Username  string
+	Password  string
+	FirstName string
+	LastName  string
+	Email     string
+}
+
+type CreateUserRow struct {
+	ID        int64
+	Username  string
+	Password  string
+	AvatarUrl string
+	FirstName string
+	LastName  string
+	Email     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Username,
+		arg.Password,
+		arg.FirstName,
+		arg.LastName,
+		arg.Email,
+	)
+	var i CreateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.AvatarUrl,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getAllExpenses = `-- name: GetAllExpenses :many
 SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at from expenses
 `
@@ -207,4 +255,37 @@ func (q *Queries) GetTotalSpendThisMonth(ctx context.Context) (pgtype.Numeric, e
 	var total pgtype.Numeric
 	err := row.Scan(&total)
 	return total, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 LIMIT 1
+`
+
+type GetUserByUsernameRow struct {
+	ID        int64
+	Username  string
+	Password  string
+	AvatarUrl string
+	FirstName string
+	LastName  string
+	Email     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUserByUsernameRow, error) {
+	row := q.db.QueryRow(ctx, getUserByUsername, username)
+	var i GetUserByUsernameRow
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.AvatarUrl,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

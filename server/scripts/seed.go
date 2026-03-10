@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mislavperi/jafa/server/internal/infrastructure/psql"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -18,6 +19,31 @@ func main() {
 	defer pool.Close()
 
 	ctx := context.Background()
+
+	// Seed default admin user
+	hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatalf("failed to hash password: %v", err)
+	}
+	_, err = pool.Exec(ctx,
+		"INSERT INTO users (username, password) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING",
+		"admin", string(hash),
+	)
+	if err != nil {
+		log.Fatalf("failed to insert admin user: %v", err)
+	}
+	fmt.Println("seeded user: admin / admin")
+	_, err = pool.Exec(ctx,
+		"UPDATE users SET avatar_url = $1, first_name = $2, last_name = $3, email = $4 WHERE username = 'admin'",
+		"https://i.pravatar.cc/150?u=admin",
+		"Admin",
+		"User",
+		"admin@jafa.local",
+	)
+	if err != nil {
+		log.Fatalf("failed to set admin profile: %v", err)
+	}
+	fmt.Println("set profile for admin")
 
 	// Realistic financial categories
 	categories := []string{
