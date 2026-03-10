@@ -27,6 +27,38 @@ WHERE is_deleted = false
   AND EXTRACT(MONTH FROM created_at) = sqlc.arg(month)::int
 ORDER BY created_at;
 
+-- name: CreateExpense :one
+INSERT INTO expenses (name, amount, cost)
+VALUES ($1, $2, $3)
+RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at;
+
+-- name: GetTagsForExpense :many
+SELECT t.id, t.name, t.created_at, t.updated_at, t.is_deleted
+FROM tags t
+JOIN expenses_tags et ON t.id = et.tag_id
+WHERE et.expense_id = $1 AND t.is_deleted = false
+ORDER BY t.name;
+
+-- name: GetAllTags :many
+SELECT id, name, created_at, updated_at, is_deleted
+FROM tags
+WHERE is_deleted = false
+ORDER BY name;
+
+-- name: CreateTag :one
+INSERT INTO tags (name)
+VALUES ($1)
+RETURNING id, name, created_at, updated_at, is_deleted;
+
+-- name: AddTagToExpense :exec
+INSERT INTO expenses_tags (expense_id, tag_id)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING;
+
+-- name: RemoveTagFromExpense :exec
+DELETE FROM expenses_tags
+WHERE expense_id = $1 AND tag_id = $2;
+
 -- name: GetFirstExpenseDate :one
 SELECT COALESCE(TO_CHAR(MIN(created_at::date), 'YYYY-MM-DD'), '') AS first_date
 FROM expenses

@@ -11,6 +11,69 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addTagToExpense = `-- name: AddTagToExpense :exec
+INSERT INTO expenses_tags (expense_id, tag_id)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING
+`
+
+type AddTagToExpenseParams struct {
+	ExpenseID int64
+	TagID     int64
+}
+
+func (q *Queries) AddTagToExpense(ctx context.Context, arg AddTagToExpenseParams) error {
+	_, err := q.db.Exec(ctx, addTagToExpense, arg.ExpenseID, arg.TagID)
+	return err
+}
+
+const createExpense = `-- name: CreateExpense :one
+INSERT INTO expenses (name, amount, cost)
+VALUES ($1, $2, $3)
+RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at
+`
+
+type CreateExpenseParams struct {
+	Name   string
+	Amount pgtype.Numeric
+	Cost   pgtype.Numeric
+}
+
+func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (Expense, error) {
+	row := q.db.QueryRow(ctx, createExpense, arg.Name, arg.Amount, arg.Cost)
+	var i Expense
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Amount,
+		&i.Cost,
+		&i.ItemID,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createTag = `-- name: CreateTag :one
+INSERT INTO tags (name)
+VALUES ($1)
+RETURNING id, name, created_at, updated_at, is_deleted
+`
+
+func (q *Queries) CreateTag(ctx context.Context, name string) (Tag, error) {
+	row := q.db.QueryRow(ctx, createTag, name)
+	var i Tag
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.IsDeleted,
+	)
+	return i, err
+}
+
 const getAllExpenses = `-- name: GetAllExpenses :many
 SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at from expenses
 `
@@ -33,6 +96,39 @@ func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
 			&i.IsDeleted,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllTags = `-- name: GetAllTags :many
+SELECT id, name, created_at, updated_at, is_deleted
+FROM tags
+WHERE is_deleted = false
+ORDER BY name
+`
+
+func (q *Queries) GetAllTags(ctx context.Context) ([]Tag, error) {
+	rows, err := q.db.Query(ctx, getAllTags)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tag
+	for rows.Next() {
+		var i Tag
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsDeleted,
 		); err != nil {
 			return nil, err
 		}
@@ -195,6 +291,40 @@ func (q *Queries) GetFirstExpenseDate(ctx context.Context) (interface{}, error) 
 	return first_date, err
 }
 
+const getTagsForExpense = `-- name: GetTagsForExpense :many
+SELECT t.id, t.name, t.created_at, t.updated_at, t.is_deleted
+FROM tags t
+JOIN expenses_tags et ON t.id = et.tag_id
+WHERE et.expense_id = $1 AND t.is_deleted = false
+ORDER BY t.name
+`
+
+func (q *Queries) GetTagsForExpense(ctx context.Context, expenseID int64) ([]Tag, error) {
+	rows, err := q.db.Query(ctx, getTagsForExpense, expenseID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Tag
+	for rows.Next() {
+		var i Tag
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsDeleted,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTotalSpendThisMonth = `-- name: GetTotalSpendThisMonth :one
 SELECT COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
 FROM expenses
@@ -207,4 +337,19 @@ func (q *Queries) GetTotalSpendThisMonth(ctx context.Context) (pgtype.Numeric, e
 	var total pgtype.Numeric
 	err := row.Scan(&total)
 	return total, err
+}
+
+const removeTagFromExpense = `-- name: RemoveTagFromExpense :exec
+DELETE FROM expenses_tags
+WHERE expense_id = $1 AND tag_id = $2
+`
+
+type RemoveTagFromExpenseParams struct {
+	ExpenseID int64
+	TagID     int64
+}
+
+func (q *Queries) RemoveTagFromExpense(ctx context.Context, arg RemoveTagFromExpenseParams) error {
+	_, err := q.db.Exec(ctx, removeTagFromExpense, arg.ExpenseID, arg.TagID)
+	return err
 }

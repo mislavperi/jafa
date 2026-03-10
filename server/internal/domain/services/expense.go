@@ -6,6 +6,7 @@ import (
 	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
+	"github.com/mislavperi/jafa/server/utils"
 )
 
 type ExpenseService struct {
@@ -108,6 +109,32 @@ func (es *ExpenseService) GetDailySpendForMonth(year, month int32) ([]models.Dai
 		})
 	}
 	return result, nil
+}
+
+type CreateExpenseInput struct {
+	Name   string
+	Amount float32
+	Cost   float32
+}
+
+func (es *ExpenseService) CreateExpense(input CreateExpenseInput) (models.Expense, error) {
+	amount, err := utils.FloatToNumeric(input.Amount)
+	if err != nil {
+		return models.Expense{}, err
+	}
+	cost, err := utils.FloatToNumeric(input.Cost)
+	if err != nil {
+		return models.Expense{}, err
+	}
+	expense, err := es.Queries.CreateExpense(context.Background(), psql.CreateExpenseParams{
+		Name:   input.Name,
+		Amount: amount,
+		Cost:   cost,
+	})
+	if err != nil {
+		return models.Expense{}, err
+	}
+	return es.Mapper.MapToDomain(expense)
 }
 
 func (es *ExpenseService) GetById(id int64) (models.Expense, error) {

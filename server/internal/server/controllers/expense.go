@@ -22,6 +22,32 @@ func NewExpenseController(expenseService *services.ExpenseService) *ExpenseContr
 	}
 }
 
+type createExpenseRequest struct {
+	Name   string   `json:"name" binding:"required"`
+	Amount *float32 `json:"amount" binding:"required"`
+	Cost   *float32 `json:"cost" binding:"required"`
+}
+
+func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		var req createExpenseRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		expense, err := ec.expenseService.CreateExpense(services.CreateExpenseInput{
+			Name:   req.Name,
+			Amount: *req.Amount,
+			Cost:   *req.Cost,
+		})
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+		ctx.JSON(http.StatusCreated, expense)
+	}
+}
+
 func (ec *ExpenseController) GetAllExpenses() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		expenses, err := ec.expenseService.GetAllExpenses()

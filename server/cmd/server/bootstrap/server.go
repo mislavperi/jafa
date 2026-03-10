@@ -15,10 +15,12 @@ func Server() *server.Server {
 	}
 
 	queries := psqlrepositories.New(connPool)
+
 	expenseService := services.NewExpenseService(queries)
+	tagService := services.NewTagService(queries)
 
 	expenseController := controllers.NewExpenseController(expenseService)
+	tagController := controllers.NewTagController(tagService)
 
-	server := server.NewServer(expenseController, 8080)
-	return server
+	return server.NewServer(expenseController, tagController, 8080)
 }
