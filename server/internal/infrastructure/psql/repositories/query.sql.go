@@ -28,19 +28,29 @@ func (q *Queries) AddTagToExpense(ctx context.Context, arg AddTagToExpenseParams
 }
 
 const createExpense = `-- name: CreateExpense :one
-INSERT INTO expenses (name, amount, cost)
-VALUES ($1, $2, $3)
-RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at
+INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date
 `
 
 type CreateExpenseParams struct {
-	Name   string
-	Amount pgtype.Numeric
-	Cost   pgtype.Numeric
+	Name                string
+	Amount              pgtype.Numeric
+	Cost                pgtype.Numeric
+	RecurrenceInterval  pgtype.Text
+	RecurrenceDay       pgtype.Int4
+	RecurrenceStartDate pgtype.Date
 }
 
 func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (Expense, error) {
-	row := q.db.QueryRow(ctx, createExpense, arg.Name, arg.Amount, arg.Cost)
+	row := q.db.QueryRow(ctx, createExpense,
+		arg.Name,
+		arg.Amount,
+		arg.Cost,
+		arg.RecurrenceInterval,
+		arg.RecurrenceDay,
+		arg.RecurrenceStartDate,
+	)
 	var i Expense
 	err := row.Scan(
 		&i.ID,
@@ -51,6 +61,9 @@ func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (E
 		&i.IsDeleted,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RecurrenceInterval,
+		&i.RecurrenceDay,
+		&i.RecurrenceStartDate,
 	)
 	return i, err
 }
@@ -123,7 +136,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const getAllExpenses = `-- name: GetAllExpenses :many
-SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at from expenses
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date from expenses
 `
 
 func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
@@ -144,6 +157,9 @@ func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
 			&i.IsDeleted,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.RecurrenceInterval,
+			&i.RecurrenceDay,
+			&i.RecurrenceStartDate,
 		); err != nil {
 			return nil, err
 		}
@@ -263,7 +279,7 @@ func (q *Queries) GetDailySpendForMonth(ctx context.Context, arg GetDailySpendFo
 }
 
 const getExpenseById = `-- name: GetExpenseById :one
-SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at FROM expenses
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date FROM expenses 
 WHERE id=$1 LIMIT 1
 `
 
@@ -279,6 +295,9 @@ func (q *Queries) GetExpenseById(ctx context.Context, id int64) (Expense, error)
 		&i.IsDeleted,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RecurrenceInterval,
+		&i.RecurrenceDay,
+		&i.RecurrenceStartDate,
 	)
 	return i, err
 }
@@ -297,15 +316,26 @@ type GetExpensesByMonthParams struct {
 	Month int32
 }
 
-func (q *Queries) GetExpensesByMonth(ctx context.Context, arg GetExpensesByMonthParams) ([]Expense, error) {
+type GetExpensesByMonthRow struct {
+	ID        int64
+	Name      string
+	Amount    pgtype.Numeric
+	Cost      pgtype.Numeric
+	ItemID    pgtype.Int8
+	IsDeleted bool
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetExpensesByMonth(ctx context.Context, arg GetExpensesByMonthParams) ([]GetExpensesByMonthRow, error) {
 	rows, err := q.db.Query(ctx, getExpensesByMonth, arg.Year, arg.Month)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Expense
+	var items []GetExpensesByMonthRow
 	for rows.Next() {
-		var i Expense
+		var i GetExpensesByMonthRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -387,21 +417,6 @@ func (q *Queries) GetTotalSpendThisMonth(ctx context.Context) (pgtype.Numeric, e
 	return total, err
 }
 
-const removeTagFromExpense = `-- name: RemoveTagFromExpense :exec
-DELETE FROM expenses_tags
-WHERE expense_id = $1 AND tag_id = $2
-`
-
-type RemoveTagFromExpenseParams struct {
-	ExpenseID int64
-	TagID     int64
-}
-
-func (q *Queries) RemoveTagFromExpense(ctx context.Context, arg RemoveTagFromExpenseParams) error {
-	_, err := q.db.Exec(ctx, removeTagFromExpense, arg.ExpenseID, arg.TagID)
-	return err
-}
-
 const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 LIMIT 1
 `
@@ -433,4 +448,19 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const removeTagFromExpense = `-- name: RemoveTagFromExpense :exec
+DELETE FROM expenses_tags
+WHERE expense_id = $1 AND tag_id = $2
+`
+
+type RemoveTagFromExpenseParams struct {
+	ExpenseID int64
+	TagID     int64
+}
+
+func (q *Queries) RemoveTagFromExpense(ctx context.Context, arg RemoveTagFromExpenseParams) error {
+	_, err := q.db.Exec(ctx, removeTagFromExpense, arg.ExpenseID, arg.TagID)
+	return err
 }

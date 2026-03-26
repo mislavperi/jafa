@@ -1,4 +1,4 @@
-import type { Expense, MonthlyTotal, DailySpend, FirstExpenseDate } from '../models/expense'
+import type { Expense, MonthlyTotal, DailySpend, FirstExpenseDate, RecurringSchedule } from '../models/expense'
 
 const BASE_URL = '/api/expense/'
 
@@ -6,6 +6,7 @@ export async function createExpense(payload: {
   name: string
   amount: number
   cost: number
+  recurringSchedule?: RecurringSchedule
 }): Promise<Expense> {
   const response = await fetch(BASE_URL, {
     method: 'POST',

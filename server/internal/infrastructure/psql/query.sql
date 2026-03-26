@@ -28,9 +28,9 @@ WHERE is_deleted = false
 ORDER BY created_at;
 
 -- name: CreateExpense :one
-INSERT INTO expenses (name, amount, cost)
-VALUES ($1, $2, $3)
-RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at;
+INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date;
 
 -- name: GetTagsForExpense :many
 SELECT t.id, t.name, t.created_at, t.updated_at, t.is_deleted

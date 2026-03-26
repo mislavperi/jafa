@@ -13,6 +13,8 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     Button: typeof import('primevue/button')['default']
+    Form: typeof import('@primevue/forms/form')['default']
+    FormField: typeof import('@primevue/forms/formfield')['default']
     InputText: typeof import('primevue/inputtext')['default']
     Message: typeof import('primevue/message')['default']
     OverlayBadge: typeof import('primevue/overlaybadge')['default']
@@ -25,6 +27,8 @@ declare module 'vue' {
 // For TSX support
 declare global {
   const Button: typeof import('primevue/button')['default']
+  const Form: typeof import('@primevue/forms/form')['default']
+  const FormField: typeof import('@primevue/forms/formfield')['default']
   const InputText: typeof import('primevue/inputtext')['default']
   const Message: typeof import('primevue/message')['default']
   const OverlayBadge: typeof import('primevue/overlaybadge')['default']

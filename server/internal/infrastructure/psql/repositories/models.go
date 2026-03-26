@@ -9,14 +9,17 @@ import (
 )
 
 type Expense struct {
-	ID        int64
-	Name      string
-	Amount    pgtype.Numeric
-	Cost      pgtype.Numeric
-	ItemID    pgtype.Int8
-	IsDeleted bool
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID                  int64
+	Name                string
+	Amount              pgtype.Numeric
+	Cost                pgtype.Numeric
+	ItemID              pgtype.Int8
+	IsDeleted           bool
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	RecurrenceInterval  pgtype.Text
+	RecurrenceDay       pgtype.Int4
+	RecurrenceStartDate pgtype.Date
 }
 
 type ExpensesTag struct {

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mislavperi/jafa/server/internal/domain/models"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
 )
 
@@ -22,10 +23,17 @@ func NewExpenseController(expenseService *services.ExpenseService) *ExpenseContr
 	}
 }
 
+type recurringScheduleRequest struct {
+	Interval   string `json:"interval" binding:"required"`
+	DayOfMonth int    `json:"dayOfMonth" binding:"required"`
+	StartDate  string `json:"startDate" binding:"required"`
+}
+
 type createExpenseRequest struct {
-	Name   string   `json:"name" binding:"required"`
-	Amount *float32 `json:"amount" binding:"required"`
-	Cost   *float32 `json:"cost" binding:"required"`
+	Name              string                    `json:"name" binding:"required"`
+	Amount            *float32                  `json:"amount" binding:"required"`
+	Cost              *float32                  `json:"cost" binding:"required"`
+	RecurringSchedule *recurringScheduleRequest `json:"recurringSchedule,omitempty"`
 }
 
 func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
@@ -35,10 +43,19 @@ func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		var recurringSchedule *models.RecurringSchedule
+		if req.RecurringSchedule != nil {
+			recurringSchedule = &models.RecurringSchedule{
+				Interval:   models.RecurrenceInterval(req.RecurringSchedule.Interval),
+				DayOfMonth: req.RecurringSchedule.DayOfMonth,
+				StartDate:  req.RecurringSchedule.StartDate,
+			}
+		}
 		expense, err := ec.expenseService.CreateExpense(services.CreateExpenseInput{
-			Name:   req.Name,
-			Amount: *req.Amount,
-			Cost:   *req.Cost,
+			Name:              req.Name,
+			Amount:            *req.Amount,
+			Cost:              *req.Cost,
+			RecurringSchedule: recurringSchedule,
 		})
 		if err != nil {
 			ctx.AbortWithError(http.StatusInternalServerError, err)

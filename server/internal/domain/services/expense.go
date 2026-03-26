@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
@@ -74,7 +75,7 @@ func (es *ExpenseService) GetExpensesByMonth(year, month int32) ([]models.Expens
 	if err != nil {
 		return nil, err
 	}
-	return es.Mapper.MapManyToDomain(expenses)
+	return es.Mapper.MapManyRowsToDomain(expenses)
 }
 
 func (es *ExpenseService) GetFirstExpenseDate() (string, error) {
@@ -112,9 +113,10 @@ func (es *ExpenseService) GetDailySpendForMonth(year, month int32) ([]models.Dai
 }
 
 type CreateExpenseInput struct {
-	Name   string
-	Amount float32
-	Cost   float32
+	Name              string
+	Amount            float32
+	Cost              float32
+	RecurringSchedule *models.RecurringSchedule
 }
 
 func (es *ExpenseService) CreateExpense(input CreateExpenseInput) (models.Expense, error) {
@@ -126,10 +128,21 @@ func (es *ExpenseService) CreateExpense(input CreateExpenseInput) (models.Expens
 	if err != nil {
 		return models.Expense{}, err
 	}
+	var recurrenceInterval pgtype.Text
+	var recurrenceDay pgtype.Int4
+	var recurrenceStartDate pgtype.Date
+	if input.RecurringSchedule != nil {
+		recurrenceInterval = pgtype.Text{String: string(input.RecurringSchedule.Interval), Valid: true}
+		recurrenceDay = pgtype.Int4{Int32: int32(input.RecurringSchedule.DayOfMonth), Valid: true}
+		recurrenceStartDate = pgtype.Date{Time: utils.ParseDate(input.RecurringSchedule.StartDate), Valid: true}
+	}
 	expense, err := es.Queries.CreateExpense(context.Background(), psql.CreateExpenseParams{
-		Name:   input.Name,
-		Amount: amount,
-		Cost:   cost,
+		Name:                input.Name,
+		Amount:              amount,
+		Cost:                cost,
+		RecurrenceInterval:  recurrenceInterval,
+		RecurrenceDay:       recurrenceDay,
+		RecurrenceStartDate: recurrenceStartDate,
 	})
 	if err != nil {
 		return models.Expense{}, err
