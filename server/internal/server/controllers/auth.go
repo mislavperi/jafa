@@ -7,8 +7,10 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
+	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
 	"github.com/mislavperi/jafa/server/internal/server/middleware"
+	customerrors "github.com/mislavperi/jafa/server/utils/errors"
 )
 
 type AuthController struct {
@@ -36,7 +38,7 @@ func (ac *AuthController) Login() gin.HandlerFunc {
 			return
 		}
 		user, err := ac.authService.Login(req.Username, req.Password)
-		if errors.Is(err, services.ErrInvalidCredentials) {
+		if errors.Is(err, customerrors.ErrInvalidCredentials) {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 			return
 		}
@@ -88,19 +90,19 @@ func (ac *AuthController) Me() gin.HandlerFunc {
 
 func (ac *AuthController) Register() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var req registerRequest
+		var req requestmodels.
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "username and password are required"})
 			return
 		}
-		user, err := ac.authService.Register(services.RegisterParams{
+		user, err := ac.authService.Register(requestmodels.RegisterParams{
 			Username:  req.Username,
 			Password:  req.Password,
 			FirstName: req.FirstName,
 			LastName:  req.LastName,
 			Email:     req.Email,
 		})
-		if errors.Is(err, services.ErrUsernameTaken) {
+		if errors.Is(err, customerrors.ErrUsernameTaken) {
 			ctx.JSON(http.StatusConflict, gin.H{"error": "username is already taken"})
 			return
 		}

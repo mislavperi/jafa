@@ -8,7 +8,9 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
+	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
+	customerrors "github.com/mislavperi/jafa/server/utils/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,17 +27,17 @@ func (as *AuthService) Login(username, password string) (models.User, error) {
 	row, err := as.Queries.GetUserByUsername(context.Background(), username)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.User{}, ErrInvalidCredentials
+			return models.User{}, customerrors.ErrInvalidCredentials
 		}
 		return models.User{}, err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(row.Password), []byte(password)); err != nil {
-		return models.User{}, ErrInvalidCredentials
+		return models.User{}, customerrors.ErrInvalidCredentials
 	}
 	return as.Mapper.MapFromGetByUsername(row), nil
 }
 
-func (as *AuthService) Register(params RegisterParams) (models.User, error) {
+func (as *AuthService) Register(params requestmodels.RegisterParams) (models.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return models.User{}, err
@@ -50,7 +52,7 @@ func (as *AuthService) Register(params RegisterParams) (models.User, error) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return models.User{}, ErrUsernameTaken
+			return models.User{}, customerrors.ErrUsernameTaken
 		}
 		return models.User{}, err
 	}

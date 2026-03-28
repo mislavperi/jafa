@@ -16,7 +16,7 @@ db:
 
 ## Run database migrations
 migrate: db
-	DATABASE_URL="$(DATABASE_URL)" dbmate -d $(MIGRATIONS_DIR) up
+	cd server && dbmate up
 
 ## Seed the database with sample data
 seed: migrate
