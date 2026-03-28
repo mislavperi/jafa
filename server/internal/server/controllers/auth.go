@@ -32,7 +32,7 @@ func saveUserToSession(session sessions.Session, user models.User) {
 
 func (ac *AuthController) Login() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var req loginRequest
+		var req requestmodels.LoginRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "username and password are required"})
 			return
@@ -90,12 +90,12 @@ func (ac *AuthController) Me() gin.HandlerFunc {
 
 func (ac *AuthController) Register() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var req requestmodels.
+		var req requestmodels.RegisterRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "username and password are required"})
 			return
 		}
-		user, err := ac.authService.Register(requestmodels.RegisterParams{
+		user, err := ac.authService.Register(requestmodels.RegisterRequest{
 			Username:  req.Username,
 			Password:  req.Password,
 			FirstName: req.FirstName,

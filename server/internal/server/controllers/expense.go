@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
+	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
 )
 
@@ -23,22 +24,9 @@ func NewExpenseController(expenseService *services.ExpenseService) *ExpenseContr
 	}
 }
 
-type recurringScheduleRequest struct {
-	Interval   string `json:"interval" binding:"required"`
-	DayOfMonth int    `json:"dayOfMonth" binding:"required"`
-	StartDate  string `json:"startDate" binding:"required"`
-}
-
-type createExpenseRequest struct {
-	Name              string                    `json:"name" binding:"required"`
-	Amount            *float32                  `json:"amount" binding:"required"`
-	Cost              *float32                  `json:"cost" binding:"required"`
-	RecurringSchedule *recurringScheduleRequest `json:"recurringSchedule,omitempty"`
-}
-
 func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var req createExpenseRequest
+		var req requestmodels.CreateExpenseRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

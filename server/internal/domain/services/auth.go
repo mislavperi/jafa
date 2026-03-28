@@ -16,11 +16,11 @@ import (
 
 type AuthService struct {
 	Queries *psql.Queries
-	Mapper  *mappers.UserMapper
+	mapper  *mappers.UserMapper
 }
 
 func NewAuthService(queries *psql.Queries) *AuthService {
-	return &AuthService{Queries: queries, Mapper: mappers.NewUserMapper()}
+	return &AuthService{Queries: queries, mapper: mappers.NewUserMapper()}
 }
 
 func (as *AuthService) Login(username, password string) (models.User, error) {
@@ -34,10 +34,10 @@ func (as *AuthService) Login(username, password string) (models.User, error) {
 	if err := bcrypt.CompareHashAndPassword([]byte(row.Password), []byte(password)); err != nil {
 		return models.User{}, customerrors.ErrInvalidCredentials
 	}
-	return as.Mapper.MapFromGetByUsername(row), nil
+	return as.mapper.MapFromGetByUsername(row), nil
 }
 
-func (as *AuthService) Register(params requestmodels.RegisterParams) (models.User, error) {
+func (as *AuthService) Register(params requestmodels.RegisterRequest) (models.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return models.User{}, err
@@ -56,5 +56,5 @@ func (as *AuthService) Register(params requestmodels.RegisterParams) (models.Use
 		}
 		return models.User{}, err
 	}
-	return as.Mapper.MapFromCreate(row), nil
+	return as.mapper.MapFromCreate(row), nil
 }

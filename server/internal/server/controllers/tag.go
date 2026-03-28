@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
+
+	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 )
 
 type TagController struct {
@@ -27,13 +29,9 @@ func (tc *TagController) GetAllTags() gin.HandlerFunc {
 	}
 }
 
-type createTagRequest struct {
-	Name string `json:"name" binding:"required"`
-}
-
 func (tc *TagController) CreateTag() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var req createTagRequest
+		var req requestmodels.CreateTagRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
