@@ -9,6 +9,6 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-	Username string `json:"username" binding:"requried"`
-	Password string `json:"password" binding:"requried"`
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }

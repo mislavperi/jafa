@@ -11,22 +11,22 @@ const darkMode = useDarkModeStore()
 const authStore = useAuthStore()
 const { mutate: logout } = useLogout()
 
-const avatarLabel = computed(() =>
-  authStore.currentUser?.username?.charAt(0).toUpperCase() ?? 'A'
-)
+const avatarLabel = computed(() => authStore.currentUser?.username?.charAt(0).toUpperCase() ?? 'A')
+
+const expanded = ref()
 
 const menu = ref()
 const menuItems = ref([
   {
     label: 'Edit Profile',
     icon: 'pi pi-user-edit',
-    command: () => {}
+    command: () => {},
   },
   {
     label: 'Logout',
     icon: 'pi pi-sign-out',
-    command: () => logout()
-  }
+    command: () => logout(),
+  },
 ])
 
 function toggleMenu(event: Event) {
@@ -35,8 +35,17 @@ function toggleMenu(event: Event) {
 </script>
 
 <template>
-  <nav class="flex items-center justify-between px-4 py-2 border-b border-surface sm:px-6">
-    <div class="text-xl font-bold">JAFA</div>
+  <nav class="flex flex-col px-4 py-2 border-r border-surface sm:px-6 h-full">
+    <div class="flex items-center">
+      <img src="../../../public/icon.png" class="w-16" />
+      <Button
+        :icon="darkMode.isDark ? 'pi pi-sun' : 'pi pi-moon'"
+        severity="secondary"
+        text
+        class="border border-surface"
+        @click="darkMode.toggle"
+      />
+    </div>
     <div class="flex items-center gap-2">
       <Button
         :icon="darkMode.isDark ? 'pi pi-sun' : 'pi pi-moon'"
@@ -51,7 +60,14 @@ function toggleMenu(event: Event) {
         class="w-9 h-9 rounded-full cursor-pointer object-cover"
         @click="toggleMenu"
       />
-      <Avatar v-else :label="avatarLabel" size="normal" shape="circle" class="cursor-pointer" @click="toggleMenu" />
+      <Avatar
+        v-else
+        :label="avatarLabel"
+        size="normal"
+        shape="circle"
+        class="cursor-pointer"
+        @click="toggleMenu"
+      />
       <Menu ref="menu" :model="menuItems" :popup="true" />
     </div>
   </nav>

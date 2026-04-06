@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import NavBar from '@/core/components/NavBar.vue'
+import SideBar from '@/core/components/SideBar.vue'
 </script>
 
-<template>
-  <NavBar />
-  <div>
-    <slot></slot>
+<template class="h-screen">
+  <div class="flex flex-row h-screen">
+    <SideBar />
+    <slot />
   </div>
 </template>

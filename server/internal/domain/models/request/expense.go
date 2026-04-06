@@ -10,5 +10,5 @@ type CreateExpenseRequest struct {
 	Name              string                    `json:"name" binding:"required"`
 	Amount            *float32                  `json:"amount" binding:"required"`
 	Cost              *float32                  `json:"cost" binding:"required"`
-	RecurringSchedule *recurringScheduleRequest `json:"recurringSchedule,omitempty"`
+	RecurringSchedule *RecurringScheduleRequest `json:"recurringSchedule,omitempty"`
 }

@@ -12,10 +12,12 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    Avatar: typeof import('primevue/avatar')['default']
     Button: typeof import('primevue/button')['default']
     Form: typeof import('@primevue/forms/form')['default']
     FormField: typeof import('@primevue/forms/formfield')['default']
     InputText: typeof import('primevue/inputtext')['default']
+    Menu: typeof import('primevue/menu')['default']
     Message: typeof import('primevue/message')['default']
     OverlayBadge: typeof import('primevue/overlaybadge')['default']
     Password: typeof import('primevue/password')['default']
@@ -26,10 +28,12 @@ declare module 'vue' {
 
 // For TSX support
 declare global {
+  const Avatar: typeof import('primevue/avatar')['default']
   const Button: typeof import('primevue/button')['default']
   const Form: typeof import('@primevue/forms/form')['default']
   const FormField: typeof import('@primevue/forms/formfield')['default']
   const InputText: typeof import('primevue/inputtext')['default']
+  const Menu: typeof import('primevue/menu')['default']
   const Message: typeof import('primevue/message')['default']
   const OverlayBadge: typeof import('primevue/overlaybadge')['default']
   const Password: typeof import('primevue/password')['default']
