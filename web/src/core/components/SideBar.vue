@@ -5,10 +5,12 @@ import Avatar from 'primevue/avatar'
 import Menu from 'primevue/menu'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useAuthStore } from '@/stores/auth'
+import { useSidebarStore } from '@/stores/sidebarToggle'
 import { useLogout } from '@/modules/auth/composables/useAuth'
 
 const darkMode = useDarkModeStore()
 const authStore = useAuthStore()
+const sidebarToggle = useSidebarStore()
 const { mutate: logout } = useLogout()
 
 const avatarLabel = computed(() => authStore.currentUser?.username?.charAt(0).toUpperCase() ?? 'A')
@@ -35,18 +37,30 @@ function toggleMenu(event: Event) {
 </script>
 
 <template>
-  <nav class="flex flex-col px-4 py-2 border-r border-surface sm:px-6 h-full">
-    <div class="flex items-center">
+  <nav
+    class="flex flex-col py-2 border-r border-surface h-full"
+    :class="[
+      sidebarToggle.isExpanded ? 'w-48' : 'w-14',
+      'transition-all duration-300 flex flex-col py-2 border-r border-surface h-full overflow-hidden',
+    ]"
+  >
+    <div
+      class="flex flex-col items-center"
+      :class="[sidebarToggle.isExpanded ? 'items-start' : 'items-center']"
+    >
       <img src="../../../public/icon.png" class="w-16" />
       <Button
-        :icon="darkMode.isDark ? 'pi pi-sun' : 'pi pi-moon'"
+        :icon="sidebarToggle.isExpanded ? 'pi pi-arrow-left' : 'pi pi-arrow-right'"
         severity="secondary"
         text
         class="border border-surface"
-        @click="darkMode.toggle"
+        @click="sidebarToggle.toggle"
       />
     </div>
-    <div class="flex items-center gap-2">
+    <div
+      class="flex flex-col items-center gap-2"
+      :class="[sidebarToggle.isExpanded ? 'items-start' : 'items-center']"
+    >
       <Button
         :icon="darkMode.isDark ? 'pi pi-sun' : 'pi pi-moon'"
         severity="secondary"
