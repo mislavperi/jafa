@@ -17,6 +17,7 @@ export interface Expense {
   amount: number
   cost?: number
   recurringSchedule?: RecurringSchedule
+  created_at?: string
 }
 
 export interface MonthlyTotal {

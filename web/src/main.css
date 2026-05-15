@@ -1,3 +1,32 @@
 @import "tailwindcss";
 @import "tailwindcss-primeui";
-@import "primeicons/primeicons.css"
+@import "primeicons/primeicons.css";
+
+@custom-variant dark (.p-dark &);
+
+@theme {
+  --color-brand: #f9bd2b;
+  --color-sidebar: #1d1f27;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  font-family: var(--font-sans);
+}
+
+/* Not expressible via PrimeVue tokens */
+.p-datatable td {
+  font-variant-numeric: tabular-nums;
+}
+
+.p-datatable .p-datatable-thead > tr > th {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+
+.p-panel .p-panel-header .p-panel-title {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+}

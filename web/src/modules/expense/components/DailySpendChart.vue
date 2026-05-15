@@ -142,8 +142,12 @@ const chartOptions = {
 </script>
 
 <template>
-  <Panel header="Cumulative Spend">
-    <div class="flex items-center gap-2 mb-3">
+  <Panel
+    header="Cumulative Spend"
+    class="h-full flex flex-col"
+    :pt="{ toggleableContent: { class: 'flex-1 flex flex-col min-h-0' }, content: { class: 'flex-1 flex flex-col min-h-0' } }"
+  >
+    <div class="flex items-center gap-2 mb-3 shrink-0">
       <Select
         v-model="selectedMonth"
         :options="availableMonths"
@@ -153,8 +157,8 @@ const chartOptions = {
         placeholder="Select month"
       />
     </div>
-    <Skeleton v-if="isLoading" height="350px" />
-    <div v-else-if="chartData.datasets.length" class="h-[350px]">
+    <Skeleton v-if="isLoading" class="flex-1" />
+    <div v-else-if="chartData.datasets.length" class="flex-1 min-h-0">
       <Chart type="line" :data="chartData" :options="chartOptions" class="w-full h-full" />
     </div>
     <div v-else class="text-center text-surface-500 py-8">

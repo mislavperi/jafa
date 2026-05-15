@@ -2,9 +2,10 @@
 import { ref } from 'vue'
 import Button from 'primevue/button'
 import Root from '@/core/views/Root.vue'
+import AppPageHeader from '@/core/components/AppPageHeader.vue'
+import AppStatCard from '@/core/components/AppStatCard.vue'
 import LatestSpends from '../components/LatestSpends.vue'
 import TotalSpendCard from '../components/TotalSpendCard.vue'
-import DailySpendChart from '../components/DailySpendChart.vue'
 import AddExpenseModal from '../components/AddExpenseModal.vue'
 
 const showModal = ref(false)
@@ -12,14 +13,20 @@ const showModal = ref(false)
 
 <template>
   <Root>
-    <div class="p-2 sm:p-4">
-      <div class="flex justify-end mb-3 sm:mb-4">
-        <Button label="Add Expense" icon="pi pi-plus" @click="showModal = true" />
+    <div
+      class="grid flex-1 min-w-0 p-4 gap-4 overflow-hidden"
+      style="grid-template-rows: auto auto 1fr"
+    >
+      <AppPageHeader title="Dashboard" subtitle="Your expenses at a glance">
+        <Button label="Add Expense" icon="pi pi-plus" size="small" @click="showModal = true" />
+      </AppPageHeader>
+      <div class="grid grid-cols-3 gap-4">
+        <TotalSpendCard />
+        <AppStatCard label="Budget" icon="pi pi-chart-pie" />
+        <AppStatCard label="Savings" icon="pi pi-piggy-bank" />
       </div>
-      <TotalSpendCard class="mb-3 sm:mb-4" />
-      <DailySpendChart class="mb-3 sm:mb-4" />
+      <LatestSpends class="h-full" />
     </div>
-    <LatestSpends />
     <AddExpenseModal v-model:visible="showModal" />
   </Root>
 </template>
