@@ -127,8 +127,12 @@ const filteredExpenses = computed<Expense[]>(() => {
 
 const selectedRows = ref<Expense[]>([])
 
+let syncing = false
 watch(selectedRows, (rows) => {
+  if (syncing) return
+  syncing = true
   selectedExpenseNames.value = new Set(rows.map((r) => r.name))
+  syncing = false
 })
 
 function formatDate(dateStr?: string) {
@@ -275,10 +279,19 @@ function toggleExpense(name: string) {
     next.add(name)
   }
   selectedExpenseNames.value = next
+  syncRowsFromNames(next)
 }
 
 function clearSelection() {
   selectedExpenseNames.value = new Set()
+  syncRowsFromNames(new Set())
+}
+
+function syncRowsFromNames(names: Set<string>) {
+  if (syncing) return
+  syncing = true
+  selectedRows.value = (filteredExpenses.value ?? []).filter((e) => names.has(e.name))
+  syncing = false
 }
 </script>
 
