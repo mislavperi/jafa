@@ -208,10 +208,7 @@ watch(searchQuery, () => {
   syncRowsFromNames(new Set())
 })
 
-const COLORS = [
-  '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6',
-  '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
-]
+const COLORS = ['#f5c518','#f97316','#3b82f6','#a855f7','#ec4899','#14b8a6','#ef4444','#71717a']
 
 interface AggregatedExpense {
   name: string
@@ -271,20 +268,27 @@ const chartData = computed(() => {
         data,
         backgroundColor: colors,
         hoverBackgroundColor: colors,
+        borderWidth: 2,
+        borderColor: '#131316',
       },
     ],
   }
 })
 
+const chartTotal = computed(() =>
+  chartData.value.datasets[0]?.data.reduce((s: number, n: number) => s + n, 0) ?? 0,
+)
+
 const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '68%',
   layout: { padding: 5 },
   animation: { animateRotate: false, animateScale: false, duration: 300 },
   plugins: {
     legend: { display: false },
-    tooltip: { filter: (tooltipItem: any) => tooltipItem.raw > 0 },
+    tooltip: { callbacks: { label: (ctx: any) => ` $${Number(ctx.raw).toFixed(2)}` } },
   },
-  responsive: true,
-  maintainAspectRatio: false,
   onClick: (_event: any, elements: any[]) => {
     if (!elements.length) return
     const index = elements[0].index
@@ -506,52 +510,53 @@ function syncRowsFromNames(names: Set<string>) {
           placeholder="Select month"
         />
       </template>
-      <div class="flex flex-col gap-3">
-        <div v-if="aggregatedExpenses.length" class="flex flex-col md:flex-row gap-3 flex-1 min-h-0">
-          <div class="relative min-w-0 h-[200px] md:h-full md:flex-1 flex items-center justify-center">
+      <div class="flex flex-col gap-4 flex-1 min-h-0">
+        <div v-if="aggregatedExpenses.length" class="flex flex-col gap-4 flex-1 min-h-0">
+          <div class="relative h-[220px] shrink-0 flex items-center justify-center">
             <Chart
               v-if="selectedExpenseNames.size > 0"
-              type="pie"
+              type="doughnut"
               :data="chartData"
               :options="chartOptions"
-              class="absolute inset-0 w-full h-full"
+              class="w-full h-full"
             />
             <div v-else class="text-center text-surface-400 text-sm px-4">
               <i class="pi pi-chart-pie text-2xl mb-2 block opacity-30" />
               Select an expense to see breakdown
             </div>
           </div>
-          <div class="flex flex-col gap-1 min-h-0 md:w-2/5 md:max-w-[250px] md:h-full md:overflow-hidden">
-            <IconField class="mb-1 shrink-0">
-              <InputIcon class="pi pi-search" />
-              <InputText
-                v-model="searchQuery"
-                placeholder="Search..."
-                class="w-full"
-                size="small"
+
+          <IconField class="shrink-0">
+            <InputIcon class="pi pi-search" />
+            <InputText
+              v-model="searchQuery"
+              placeholder="Search..."
+              class="w-full"
+              size="small"
+            />
+          </IconField>
+
+          <div class="flex flex-col gap-2 overflow-y-auto min-h-0 flex-1">
+            <div
+              v-for="item in aggregatedExpenses"
+              :key="item.name"
+              class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors"
+              :class="[
+                selectedExpenseNames.has(item.name)
+                  ? 'bg-primary/10 ring-1 ring-primary'
+                  : 'hover:bg-white/[0.025]',
+              ]"
+              @click="toggleExpense(item.name)"
+            >
+              <span
+                class="w-2.5 h-2.5 rounded-sm shrink-0"
+                :style="{ background: item.color }"
               />
-            </IconField>
-            <div class="overflow-y-auto flex flex-col gap-0.5 min-h-0 flex-1 max-h-[150px] md:max-h-none">
-              <div
-                v-for="item in aggregatedExpenses"
-                :key="item.name"
-                class="flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors"
-                :class="[
-                  selectedExpenseNames.has(item.name)
-                    ? 'bg-primary/10 ring-1 ring-primary'
-                    : 'hover:bg-surface-100 dark:hover:bg-surface-800',
-                ]"
-                @click="toggleExpense(item.name)"
-              >
-                <span
-                  class="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  :style="{ backgroundColor: item.color }"
-                />
-                <div class="flex flex-col min-w-0">
-                  <span class="text-xs truncate">{{ item.name }}</span>
-                  <span class="text-xs text-surface-500">${{ item.total.toFixed(2) }}</span>
-                </div>
-              </div>
+              <span class="flex-1 text-zinc-400 text-[12px] truncate">{{ item.name }}</span>
+              <span class="text-white tabular-nums text-[12px] font-medium">${{ item.total.toFixed(0) }}</span>
+              <span class="text-zinc-500 text-[11px] w-8 text-right tabular-nums">
+                {{ chartTotal && selectedExpenseNames.has(item.name) ? Math.round(item.total / chartTotal * 100) : 0 }}%
+              </span>
             </div>
           </div>
         </div>
