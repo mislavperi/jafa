@@ -24,6 +24,30 @@ const router = createRouter({
       component: () => import('@/modules/expense/views/ExpensePage.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/expenses',
+      name: 'expenses',
+      component: () => import('@/modules/expense/views/ExpensesListPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/reports',
+      name: 'reports',
+      component: () => import('@/pages/ReportsPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/categories',
+      name: 'categories',
+      component: () => import('@/pages/CategoriesPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/pages/SettingsPage.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
