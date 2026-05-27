@@ -4,37 +4,16 @@
 
 @custom-variant dark (.p-dark &);
 
-@theme {
-  /* Brand palette */
-  --color-brand: #f5c518;
-  --color-brand-hover: #ffd233;
-  --color-brand-dim: #3d2f0a;
-  --color-brand-ink: #0a0a0b;
-
-  /* App surfaces (dark by default) */
-  --color-app-bg: #0a0a0b;
-  --color-app-surface: #131316;
-  --color-app-surface-2: #18181c;
-  --color-app-surface-3: #1f1f24;
-  --color-app-border: #26262c;
-  --color-app-border-strong: #32323a;
-
-  /* Type */
-  --font-sans: 'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-display: 'Geist Mono', ui-monospace, monospace;
-  --font-mono: 'Geist Mono', ui-monospace, monospace;
-}
-
 html, body, #app {
   height: 100%;
 }
 
 * {
-  font-family: var(--font-sans);
+  font-family: var(--p-jafa-font-mono);
 }
 
 body {
-  background: var(--color-app-bg);
+  background: var(--p-jafa-bg);
   color: #f5f5f7;
   font-size: 13.5px;
   line-height: 1.5;
@@ -61,7 +40,7 @@ body {
 
 /* Better focus rings */
 *:focus-visible {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid var(--p-jafa-brand);
   outline-offset: 2px;
 }
 
@@ -69,11 +48,11 @@ body {
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-app-border);
+  background: var(--p-jafa-border);
   border-radius: 8px;
-  border: 2px solid var(--color-app-bg);
+  border: 2px solid var(--p-jafa-bg);
 }
-::-webkit-scrollbar-thumb:hover { background: var(--color-app-border-strong); }
+::-webkit-scrollbar-thumb:hover { background: var(--p-jafa-border-strong); }
 
 /* ───────── Receipt component (login + register) ───────── */
 .receipt-shell {
@@ -82,7 +61,7 @@ body {
   max-width: 380px;
   background: #fafaf6;
   color: #1a1a1a;
-  font-family: var(--font-mono);
+  font-family: var(--p-jafa-font-mono);
   padding: 40px 32px 28px;
   box-shadow:
     0 1px 0 rgba(255,255,255,0.04),
@@ -117,7 +96,7 @@ body {
   border: none;
   border-bottom: 1.5px solid #1a1a1a;
   padding: 4px 0 6px;
-  font-family: var(--font-mono);
+  font-family: var(--p-jafa-font-mono);
   font-size: 14px;
   color: #1a1a1a;
   outline: none;
@@ -132,7 +111,7 @@ body {
   background: #1a1a1a;
   color: #fafaf6;
   border: none;
-  font-family: var(--font-mono);
+  font-family: var(--p-jafa-font-mono);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.24em;

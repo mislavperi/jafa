@@ -23,6 +23,22 @@ const JafaPreset = definePreset(Aura, {
     },
   },
 
+  extend: {
+    jafa: {
+      brand:        '#f5c518',
+      brandHover:   '#ffd233',
+      brandDim:     '#3d2f0a',
+      brandInk:     '#0a0a0b',
+      bg:           '#0a0a0b',
+      surface:      '#131316',
+      surface2:     '#18181c',
+      surface3:     '#1f1f24',
+      border:       '#26262c',
+      borderStrong: '#32323a',
+      fontMono:     MONO_STACK,
+    },
+  },
+
   semantic: {
     primary: {
       50: '{amber.50}',
