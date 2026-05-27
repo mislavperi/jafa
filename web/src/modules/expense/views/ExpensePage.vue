@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed } from 'vue'
 import Button from 'primevue/button'
+import Chart from 'primevue/chart'
 import Root from '@/core/views/Root.vue'
 import AppPageHeader from '@/core/components/AppPageHeader.vue'
 import AppStatCard from '@/core/components/AppStatCard.vue'
@@ -8,6 +9,8 @@ import TotalSpendCard from '../components/TotalSpendCard.vue'
 import DailySpendChart from '../components/DailySpendChart.vue'
 import AddExpenseModal from '../components/AddExpenseModal.vue'
 import { useExpenses, useExpensesByMonth, useMonthlyTotal } from '../composables/useExpenses'
+
+const COLORS = ['#f5c518','#f97316','#3b82f6','#a855f7','#ec4899','#14b8a6','#ef4444','#71717a']
 
 const showModal = ref(false)
 
@@ -79,6 +82,18 @@ const insights = computed(() => [
       : 'Add expenses to see trends',
   },
 ])
+
+// Breakdown items for pie chart
+const breakdownItems = computed(() => {
+  const map = new Map<string, number>()
+  for (const e of currentMonthExpenses.value ?? []) {
+    map.set(e.name, (map.get(e.name) ?? 0) + e.amount)
+  }
+  return [...map.entries()]
+    .map(([name, total]) => ({ name, total }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8)
+})
 
 // Recent 5 expenses for dashboard table
 const recentExpenses = computed(() =>
@@ -166,31 +181,48 @@ function formatDate(d?: string) {
           </table>
         </div>
 
-        <!-- Expense breakdown (reuse LatestSpends breakdown panel) -->
+        <!-- Expense breakdown pie chart -->
         <div class="bg-[#131316] border border-[#26262c] rounded-[14px] p-5 flex flex-col gap-4">
           <h2 class="text-[11px] font-semibold uppercase tracking-[0.06em] text-zinc-400">Expense Breakdown</h2>
-          <div v-if="currentMonthExpenses?.length" class="flex flex-col gap-3">
-            <div
-              v-for="(item, i) in [...(currentMonthExpenses ?? [])].reduce((acc, e) => {
-                const existing = acc.find(a => a.name === e.name)
-                if (existing) existing.total += e.amount
-                else acc.push({ name: e.name, total: e.amount })
-                return acc
-              }, [] as { name: string; total: number }[]).sort((a, b) => b.total - a.total).slice(0, 6)"
-              :key="item.name"
-              class="flex items-center gap-3"
-            >
-              <span
-                class="w-2.5 h-2.5 rounded-sm shrink-0"
-                :style="{ background: ['#f5c518','#f97316','#3b82f6','#a855f7','#ec4899','#14b8a6'][i % 6] }"
+          <template v-if="currentMonthExpenses?.length">
+            <div class="relative h-[200px]">
+              <Chart
+                type="doughnut"
+                :data="{
+                  labels: breakdownItems.map(i => i.name),
+                  datasets: [{
+                    data: breakdownItems.map(i => i.total),
+                    backgroundColor: breakdownItems.map((_, idx) => COLORS[idx % COLORS.length]),
+                    hoverBackgroundColor: breakdownItems.map((_, idx) => COLORS[idx % COLORS.length]),
+                    borderWidth: 2,
+                    borderColor: '#131316',
+                  }]
+                }"
+                :options="{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  cutout: '68%',
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: (ctx) => ` $${Number(ctx.raw).toFixed(2)}` } }
+                  }
+                }"
+                class="w-full h-full"
               />
-              <span class="flex-1 text-zinc-400 text-[13px] truncate">{{ item.name }}</span>
-              <span class="text-white tabular-nums text-[13px] font-medium">${{ item.total.toFixed(0) }}</span>
-              <span class="text-zinc-500 text-[12px] w-9 text-right tabular-nums">
-                {{ currentTotal ? Math.round(item.total / currentTotal * 100) : 0 }}%
-              </span>
             </div>
-          </div>
+            <div class="flex flex-col gap-2">
+              <div
+                v-for="(item, i) in breakdownItems"
+                :key="item.name"
+                class="flex items-center gap-2"
+              >
+                <span class="w-2.5 h-2.5 rounded-sm shrink-0" :style="{ background: COLORS[i % COLORS.length] }" />
+                <span class="flex-1 text-zinc-400 text-[12px] truncate">{{ item.name }}</span>
+                <span class="text-white tabular-nums text-[12px] font-medium">${{ item.total.toFixed(0) }}</span>
+                <span class="text-zinc-500 text-[11px] w-8 text-right tabular-nums">{{ currentTotal ? Math.round(item.total / currentTotal * 100) : 0 }}%</span>
+              </div>
+            </div>
+          </template>
           <p v-else class="text-zinc-500 text-[13px] py-4 text-center">No data for this month</p>
         </div>
       </div>

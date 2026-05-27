@@ -38,7 +38,7 @@ const categoryStats = computed(() => {
   const totals: Record<string, number> = {}
   for (const e of expenses.value ?? []) {
     const cat = categorize(e)
-    totals[cat] = (totals[cat] ?? 0) + (e.cost ?? 0)
+    totals[cat] = (totals[cat] ?? 0) + (e.amount)
   }
   return CATEGORIES.map((c) => {
     const spent = totals[c.name] ?? 0

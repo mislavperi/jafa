@@ -19,7 +19,7 @@ const monthlyTotals = computed(() => {
     const date = e.created_at ? new Date(e.created_at) : null
     if (!date) continue
     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    map[key] = (map[key] ?? 0) + (e.cost ?? 0)
+    map[key] = (map[key] ?? 0) + (e.amount)
   }
   return map
 })
@@ -118,7 +118,7 @@ const categoryAverages = computed(() => {
   const totals: Record<string, number> = {}
   for (const e of expenses.value ?? []) {
     const cat = categorize(e)
-    totals[cat] = (totals[cat] ?? 0) + (e.cost ?? 0)
+    totals[cat] = (totals[cat] ?? 0) + (e.amount)
   }
   const maxVal = Math.max(1, ...Object.values(totals))
   return CATEGORIES.map((c) => ({
