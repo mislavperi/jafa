@@ -235,7 +235,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => ({
 
         <FormField v-slot="$field" name="recurrenceDay" :initialValue="null">
           <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Day of {{ formRef?.getFieldState('recurrenceInterval')?.value === 'yearly' ? 'Month' : 'Month' }}</label>
+            <label class="text-sm font-medium">Day of {{ formRef?.getFieldState('recurrenceInterval')?.value === 'yearly' ? 'Year' : 'Month' }}</label>
             <Select
               v-bind="$field.props"
               :options="dayOptions"

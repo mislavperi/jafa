@@ -153,6 +153,7 @@ func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 		expense, err := ec.expenseService.GetById(int64(id))
 		if err != nil {
 			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
 		}
 		ctx.JSON(http.StatusOK, expense)
 	}
