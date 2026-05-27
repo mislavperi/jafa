@@ -120,6 +120,141 @@ const JafaPreset = definePreset(Aura, {
     },
   },
 
+  css: ({ dt }: { dt: (token: string) => string }) => `
+    html, body, #app { height: 100%; }
+
+    * { font-family: ${dt('jafa.fontMono')}; }
+
+    body {
+      background: ${dt('jafa.bg')};
+      color: #f5f5f7;
+      font-size: 13.5px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .p-datatable td,
+    .tabular { font-variant-numeric: tabular-nums; }
+
+    .p-datatable .p-datatable-thead > tr > th {
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .p-panel .p-panel-header .p-panel-title {
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.7rem;
+    }
+
+    *:focus-visible {
+      outline: 2px solid ${dt('jafa.brand')};
+      outline-offset: 2px;
+    }
+
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: ${dt('jafa.border')};
+      border-radius: 8px;
+      border: 2px solid ${dt('jafa.bg')};
+    }
+    ::-webkit-scrollbar-thumb:hover { background: ${dt('jafa.borderStrong')}; }
+
+    .receipt-shell {
+      position: relative;
+      width: 100%;
+      max-width: 380px;
+      background: #fafaf6;
+      color: #1a1a1a;
+      font-family: ${dt('jafa.fontMono')};
+      padding: 40px 32px 28px;
+      box-shadow:
+        0 1px 0 rgba(255,255,255,0.04),
+        0 30px 80px -20px rgba(0,0,0,0.7),
+        0 50px 120px -40px rgba(245, 197, 24, 0.15);
+      background-image:
+        radial-gradient(rgba(0,0,0,0.015) 1px, transparent 1px),
+        radial-gradient(rgba(0,0,0,0.015) 1px, transparent 1px);
+      background-size: 3px 3px, 7px 7px;
+      background-position: 0 0, 1.5px 1.5px;
+    }
+    .receipt-shell::before, .receipt-shell::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 14px;
+      background: radial-gradient(circle at 7px 0, transparent 6px, #fafaf6 6.5px) 0 0 / 14px 14px repeat-x;
+    }
+    .receipt-shell::before { top: -1px; transform: rotate(180deg); }
+    .receipt-shell::after { bottom: -13px; }
+
+    .receipt-divider {
+      border: none;
+      border-top: 1.5px dashed #c7c5b8;
+      margin: 14px 0;
+    }
+
+    .receipt-input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid #1a1a1a;
+      padding: 4px 0 6px;
+      font-family: ${dt('jafa.fontMono')};
+      font-size: 14px;
+      color: #1a1a1a;
+      outline: none;
+      letter-spacing: 0.02em;
+    }
+    .receipt-input::placeholder { color: #b8b6a8; }
+    .receipt-input:focus { border-bottom-color: #d97706; }
+
+    .receipt-btn {
+      width: 100%;
+      padding: 14px 16px;
+      background: #1a1a1a;
+      color: #fafaf6;
+      border: none;
+      font-family: ${dt('jafa.fontMono')};
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.24em;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.05s;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      white-space: nowrap;
+    }
+    .receipt-btn:hover:not(:disabled) { background: #d97706; }
+    .receipt-btn:active { transform: translateY(1px); }
+    .receipt-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .receipt-link {
+      color: #d97706;
+      text-decoration: none;
+      font-weight: 700;
+      border-bottom: 1.5px solid #d97706;
+      padding-bottom: 1px;
+    }
+    .receipt-link:hover { background: #d97706; color: #fafaf6; }
+
+    @keyframes drift {
+      0%   { transform: translateY(0);     opacity: 0; }
+      10%  { opacity: 0.25; }
+      90%  { opacity: 0.25; }
+      100% { transform: translateY(-60vh); opacity: 0; }
+    }
+    .drift { animation: drift linear infinite; }
+  `,
+
   components: {
     panel: {
       header: { padding: '0.55rem 0.875rem' },
