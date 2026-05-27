@@ -14,18 +14,24 @@ const showModal = ref(false)
 <template>
   <Root>
     <div
-      class="grid flex-1 min-w-0 p-4 gap-4 overflow-hidden"
-      style="grid-template-rows: auto auto 1fr"
+      class="flex flex-col gap-5 h-full min-w-0 p-8 overflow-auto"
     >
-      <AppPageHeader title="Dashboard" subtitle="Your expenses at a glance">
-        <Button label="Add Expense" icon="pi pi-plus" size="small" @click="showModal = true" />
+      <AppPageHeader title="Dashboard" subtitle="Your spending at a glance">
+        <Button
+          label="Add Expense"
+          icon="pi pi-plus"
+          size="small"
+          @click="showModal = true"
+        />
       </AppPageHeader>
+
       <div class="grid grid-cols-3 gap-4">
         <TotalSpendCard />
-        <AppStatCard label="Budget" icon="pi pi-chart-pie" />
-        <AppStatCard label="Savings" icon="pi pi-piggy-bank" />
+        <AppStatCard label="Budget" icon="pi pi-chart-pie" tone="brand" />
+        <AppStatCard label="Savings" icon="pi pi-piggy-bank" tone="positive" />
       </div>
-      <LatestSpends class="h-full" />
+
+      <LatestSpends class="flex-1 min-h-0" />
     </div>
     <AddExpenseModal v-model:visible="showModal" />
   </Root>

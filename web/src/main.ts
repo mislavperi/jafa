@@ -9,6 +9,8 @@ import { definePreset } from '@primeuix/themes'
 import App from './App.vue'
 import router from './router'
 
+const MONO_STACK = `'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace`
+
 const JafaPreset = definePreset(Aura, {
   primitive: {
     borderRadius: {
@@ -69,118 +71,86 @@ const JafaPreset = definePreset(Aura, {
       dark: {
         surface: {
           0:   '#ffffff',
-          50:  '{zinc.50}',
-          100: '{zinc.100}',
-          200: '{zinc.200}',
-          300: '{zinc.300}',
-          400: '{zinc.400}',
-          500: '{zinc.500}',
-          600: '{zinc.600}',
-          700: '{zinc.700}',
-          800: '{zinc.800}',
-          900: '{zinc.900}',
-          950: '{zinc.950}',
+          50:  '#f5f5f7',
+          100: '#e4e4e7',
+          200: '#a1a1aa',
+          300: '#71717a',
+          400: '#52525b',
+          500: '#3f3f46',
+          600: '#32323a',
+          700: '#26262c',
+          800: '#131316',
+          900: '#0a0a0b',
+          950: '#000000',
         },
         content: {
-          background: '{surface.800}',
-          hoverBackground: '{surface.700}',
-          borderColor: '{surface.600}',
+          background: '#131316',
+          hoverBackground: '#1f1f24',
+          borderColor: '#26262c',
           color: '{text.color}',
           hoverColor: '{text.hover.color}',
         },
+        text: {
+          color: '#f5f5f7',
+          hoverColor: '#ffffff',
+          mutedColor: '#a1a1aa',
+          hoverMutedColor: '#d4d4d8',
+        },
       },
+    },
+
+    formField: {
+      fontFamily: MONO_STACK,
     },
   },
 
   components: {
     panel: {
-      header: {
-        padding: '0.55rem 0.875rem',
-      },
-      toggleableHeader: {
-        padding: '0.3rem 0.875rem',
-      },
-      content: {
-        padding: '0.875rem',
-      },
-      footer: {
-        padding: '0 0.875rem 0.875rem 0.875rem',
-      },
+      header: { padding: '0.55rem 0.875rem' },
+      toggleableHeader: { padding: '0.3rem 0.875rem' },
+      content: { padding: '0.875rem' },
+      footer: { padding: '0 0.875rem 0.875rem 0.875rem' },
     },
 
     datatable: {
-      headerCell: {
-        padding: '0.45rem 0.75rem',
-      },
-      bodyCell: {
-        padding: '0.45rem 0.75rem',
-      },
-      footerCell: {
-        padding: '0.45rem 0.75rem',
-      },
+      headerCell: { padding: '0.5rem 0.75rem' },
+      bodyCell: { padding: '0.55rem 0.75rem' },
+      footerCell: { padding: '0.45rem 0.75rem' },
     },
 
     card: {
-      root: {
-        shadow: 'none',
-        borderRadius: '{border.radius.md}',
-      },
-      body: {
-        padding: '0.875rem',
-        gap: '0.25rem',
-      },
-      title: {
-        fontSize: '0.7rem',
-        fontWeight: '700',
-      },
-      subtitle: {
-        color: '{text.muted.color}',
-      },
+      root: { shadow: 'none', borderRadius: '{border.radius.lg}' },
+      body: { padding: '1rem 1.125rem', gap: '0.25rem' },
+      title: { fontSize: '0.7rem', fontWeight: '600' },
+      subtitle: { color: '{text.muted.color}' },
     },
 
     chip: {
       root: {
-        borderRadius: '4px',
-        paddingX: '0.45rem',
+        borderRadius: '999px',
+        paddingX: '0.55rem',
         paddingY: '0.15rem',
-        gap: '0.25rem',
+        gap: '0.35rem',
       },
     },
 
     button: {
       root: {
-        sm: {
-          paddingX: '0.5rem',
-          paddingY: '0.3rem',
-        },
+        sm: { paddingX: '0.625rem', paddingY: '0.35rem' },
+        borderRadius: '{border.radius.md}',
+        letterSpacing: '0.02em',
       },
-      label: {
-        fontWeight: '500',
-      },
+      label: { fontWeight: '600' },
     },
 
-    dialog: {
-      root: {
-        borderRadius: '{border.radius.md}',
-      },
-    },
-
-    select: {
-      root: {
-        borderRadius: '{border.radius.md}',
-      },
-    },
-
-    inputtext: {
-      root: {
-        borderRadius: '{border.radius.md}',
-      },
-    },
-
-    inputnumber: {
-      root: {
-        borderRadius: '{border.radius.md}',
-      },
+    dialog: { root: { borderRadius: '{border.radius.lg}' } },
+    select: { root: { borderRadius: '{border.radius.md}' } },
+    inputtext: { root: { borderRadius: '{border.radius.md}' } },
+    inputnumber: { root: { borderRadius: '{border.radius.md}' } },
+    password: { root: { borderRadius: '{border.radius.md}' } },
+    menu: {
+      root: { borderRadius: '{border.radius.md}' },
+      item: { padding: '0.5rem 0.75rem' },
     },
   },
 })
