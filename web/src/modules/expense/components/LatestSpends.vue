@@ -127,6 +127,10 @@ const filteredExpenses = computed<Expense[]>(() => {
 
 const selectedRows = ref<Expense[]>([])
 
+watch(selectedRows, (rows) => {
+  selectedExpenseNames.value = new Set(rows.map((r) => r.name))
+})
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })

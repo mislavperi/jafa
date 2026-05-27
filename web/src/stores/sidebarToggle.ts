@@ -3,7 +3,7 @@ import { defineStore } from 'pinia'
 
 export const useSidebarStore = defineStore('sidebarToggle', () => {
   const stored = localStorage.getItem('sidebarToggle')
-  const isExpanded = ref(stored !== null ? stored === 'true' : stored === 'false')
+  const isExpanded = ref(stored !== null ? stored === 'true' : true)
 
   function toggle() {
     isExpanded.value = !isExpanded.value
