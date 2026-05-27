@@ -205,6 +205,7 @@ const selectedExpenseNames = ref(new Set<string>())
 
 watch(searchQuery, () => {
   selectedExpenseNames.value = new Set()
+  syncRowsFromNames(new Set())
 })
 
 const COLORS = [
@@ -236,19 +237,40 @@ const aggregatedExpenses = computed<AggregatedExpense[]>(() => {
   }))
 })
 
+const colorByName = computed(() => {
+  const m = new Map<string, string>()
+  aggregatedExpenses.value.forEach((e) => m.set(e.name, e.color))
+  return m
+})
+
 const chartData = computed(() => {
-  const selected = aggregatedExpenses.value.filter((e) =>
-    selectedExpenseNames.value.has(e.name),
-  )
-  if (!selected.length) return { labels: [], datasets: [] }
+  if (!selectedExpenseNames.value.size) return { labels: [], datasets: [] }
+
+  const totals = new Map<string, number>()
+  for (const row of selectedRows.value) {
+    if (!selectedExpenseNames.value.has(row.name)) continue
+    totals.set(row.name, (totals.get(row.name) ?? 0) + row.amount)
+  }
+
+  for (const name of selectedExpenseNames.value) {
+    if (totals.has(name)) continue
+    const agg = aggregatedExpenses.value.find((a) => a.name === name)
+    if (agg) totals.set(name, agg.total)
+  }
+
+  if (!totals.size) return { labels: [], datasets: [] }
+
+  const labels = [...totals.keys()]
+  const data = labels.map((n) => totals.get(n) ?? 0)
+  const colors = labels.map((n, i) => colorByName.value.get(n) ?? COLORS[i % COLORS.length]!)
 
   return {
-    labels: selected.map((e) => e.name),
+    labels,
     datasets: [
       {
-        data: selected.map((e) => e.total),
-        backgroundColor: selected.map((e) => e.color),
-        hoverBackgroundColor: selected.map((e) => e.color),
+        data,
+        backgroundColor: colors,
+        hoverBackgroundColor: colors,
       },
     ],
   }
