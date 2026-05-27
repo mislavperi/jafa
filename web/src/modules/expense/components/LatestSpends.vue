@@ -229,24 +229,18 @@ const aggregatedExpenses = computed<AggregatedExpense[]>(() => {
 })
 
 const chartData = computed(() => {
-  const items = aggregatedExpenses.value
-  if (!items.length) return { labels: [], datasets: [] }
-
-  const hasSelection = selectedExpenseNames.value.size > 0
+  const selected = aggregatedExpenses.value.filter((e) =>
+    selectedExpenseNames.value.has(e.name),
+  )
+  if (!selected.length) return { labels: [], datasets: [] }
 
   return {
-    labels: items.map((e) => e.name),
+    labels: selected.map((e) => e.name),
     datasets: [
       {
-        data: items.map((e) =>
-          hasSelection && !selectedExpenseNames.value.has(e.name) ? 0 : e.total,
-        ),
-        backgroundColor: items.map((e) =>
-          hasSelection && !selectedExpenseNames.value.has(e.name)
-            ? e.color + '20'
-            : e.color,
-        ),
-        hoverBackgroundColor: items.map((e) => e.color),
+        data: selected.map((e) => e.total),
+        backgroundColor: selected.map((e) => e.color),
+        hoverBackgroundColor: selected.map((e) => e.color),
       },
     ],
   }
@@ -475,13 +469,18 @@ function clearSelection() {
       </template>
       <div class="flex flex-col gap-3">
         <div v-if="aggregatedExpenses.length" class="flex flex-col md:flex-row gap-3 flex-1 min-h-0">
-          <div class="relative min-w-0 h-[200px] md:h-full md:flex-1">
+          <div class="relative min-w-0 h-[200px] md:h-full md:flex-1 flex items-center justify-center">
             <Chart
+              v-if="selectedExpenseNames.size > 0"
               type="pie"
               :data="chartData"
               :options="chartOptions"
               class="absolute inset-0 w-full h-full"
             />
+            <div v-else class="text-center text-surface-400 text-sm px-4">
+              <i class="pi pi-chart-pie text-2xl mb-2 block opacity-30" />
+              Select an expense to see breakdown
+            </div>
           </div>
           <div class="flex flex-col gap-1 min-h-0 md:w-2/5 md:max-w-[250px] md:h-full md:overflow-hidden">
             <IconField class="mb-1 shrink-0">
