@@ -7,14 +7,15 @@ import Column from 'primevue/column'
 import Chart from 'primevue/chart'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
+import AddExpenseModal from './AddExpenseModal.vue'
 import type { Expense, Tag } from '../models/expense'
 
-import { useExpenses, useFirstExpenseDate, useExpensesByMonth } from '../composables/useExpenses'
+import { useExpenses, useFirstExpenseDate, useExpensesByMonth, useDeleteExpense } from '../composables/useExpenses'
+import { useDarkModeStore } from '@/stores/darkMode'
+const darkMode = useDarkModeStore()
+const surfaceColor = computed(() => (darkMode.isDark ? '#131316' : '#ffffff'))
 import { useAllTags } from '../composables/useTags'
 import { getTagsForExpense } from '../api/tag'
 import ExpenseTagsCell from './ExpenseTagsCell.vue'
@@ -141,19 +142,17 @@ function formatDate(dateStr?: string) {
 }
 
 const editingExpense = ref<Expense | null>(null)
-const editName = ref('')
-const editAmount = ref<number>(0)
-const editCost = ref<number>(0)
+const showEditModal = ref(false)
+const { mutateAsync: deleteExpense } = useDeleteExpense()
 
 function openEdit(expense: Expense) {
   editingExpense.value = expense
-  editName.value = expense.name
-  editAmount.value = expense.amount
-  editCost.value = expense.cost ?? 0
+  showEditModal.value = true
 }
 
-function closeEdit() {
-  editingExpense.value = null
+async function removeExpense(expense: Expense) {
+  if (!confirm(`Delete "${expense.name}"?`)) return
+  await deleteExpense(expense.id)
 }
 
 // Month selector for the pie chart
@@ -269,7 +268,7 @@ const chartData = computed(() => {
         backgroundColor: colors,
         hoverBackgroundColor: colors,
         borderWidth: 2,
-        borderColor: '#131316',
+        borderColor: surfaceColor.value,
       },
     ],
   }
@@ -287,7 +286,7 @@ const chartOptions = {
   animation: { animateRotate: false, animateScale: false, duration: 300 },
   plugins: {
     legend: { display: false },
-    tooltip: { callbacks: { label: (ctx: any) => ` $${Number(ctx.raw).toFixed(2)}` } },
+    tooltip: { callbacks: { label: (ctx: any) => ` €${Number(ctx.raw).toFixed(2)}` } },
   },
   onClick: (_event: any, elements: any[]) => {
     if (!elements.length) return
@@ -324,11 +323,13 @@ function syncRowsFromNames(names: Set<string>) {
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
     <Panel
-      header="Recent Expenses"
-      class="h-full flex flex-col"
+      header="RECENT EXPENSES"
+      class="h-full flex flex-col bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] overflow-hidden"
       :pt="{
+        root: { class: '!bg-[var(--jafa-surface)] !border-[var(--jafa-border)]' },
+        header: { class: '!bg-[var(--jafa-surface)] !border-b !border-[var(--jafa-border)] !px-5 !py-4 [&_.p-panel-title]:!text-[calc(11px*var(--jafa-text-scale,1))] [&_.p-panel-title]:!font-semibold [&_.p-panel-title]:!uppercase [&_.p-panel-title]:!tracking-[0.06em] [&_.p-panel-title]:!text-[var(--jafa-text-muted)]' },
         toggleableContent: { class: 'flex-1 flex flex-col min-h-0' },
-        content: { class: 'flex-1 flex flex-col min-h-0 !p-0 overflow-hidden' }
+        content: { class: 'flex-1 flex flex-col min-h-0 !p-0 !bg-[var(--jafa-surface)] overflow-hidden' }
       }"
     >
       <!-- Smart search bar -->
@@ -385,7 +386,7 @@ function syncRowsFromNames(names: Set<string>) {
                 :key="tag.id"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all border"
                 :class="selectedFilterTagIds.has(tag.id)
-                  ? 'bg-primary text-white border-primary'
+                  ? 'bg-primary text-[var(--jafa-text)] border-primary'
                   : 'bg-transparent border-surface text-surface-500 hover:border-primary/50 hover:text-primary'"
                 @mousedown.prevent="toggleFilterTag(tag.id)"
               >
@@ -435,19 +436,31 @@ function syncRowsFromNames(names: Set<string>) {
         :rows="7"
         scrollable
         scroll-height="flex"
-        :pt="{ thead: { class: 'bg-surface-50 dark:bg-surface-800' } }"
+        class="jafa-table"
+        :pt="{
+          table: { class: '!bg-[var(--jafa-surface)]' },
+          thead: { class: '!bg-[var(--jafa-surface)]' },
+          headerRow: { class: '!border-b !border-[var(--jafa-border)]' },
+          headerCell: { class: '!bg-[var(--jafa-surface)] !border-0 !text-[calc(11px*var(--jafa-text-scale,1))] !font-semibold !uppercase !tracking-[0.06em] !text-[var(--jafa-text-muted)] !px-3 !py-2.5' },
+          tbody: { class: '!bg-[var(--jafa-surface)]' },
+          bodyRow: { class: '!bg-[var(--jafa-surface)] hover:!bg-[var(--jafa-hover)] !border-0' },
+          bodyCell: { class: '!bg-transparent !border-b !border-[var(--jafa-border)] !text-[calc(13.5px*var(--jafa-text-scale,1))] !px-3 !py-3.5 !text-[var(--jafa-text)]' },
+        }"
       >
         <Column selectionMode="multiple" style="width: 2.75rem; padding-left: 1rem; padding-right: 0" />
 
-        <Column field="name" header="Name" sortable>
+        <Column field="name" header="Expense Name" sortable>
           <template #body="{ data }">
-            <span class="font-medium text-sm">{{ data.name }}</span>
-          </template>
-        </Column>
-
-        <Column field="amount" header="Amount" sortable style="width: 7rem">
-          <template #body="{ data }">
-            <span class="font-medium tabular-nums">${{ data.amount.toFixed(2) }}</span>
+            <span class="inline-flex items-center gap-2 font-medium text-[calc(13.5px*var(--jafa-text-scale,1))] text-[var(--jafa-text)]">
+              {{ data.name }}
+              <span
+                v-if="data.recurringSchedule"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--jafa-accent)]/15 text-[var(--jafa-accent)] text-[calc(10px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em]"
+              >
+                <i class="pi pi-replay text-[calc(9px*var(--jafa-text-scale,1))]" />
+                {{ data.recurringSchedule.interval }}
+              </span>
+            </span>
           </template>
         </Column>
 
@@ -457,42 +470,55 @@ function syncRowsFromNames(names: Set<string>) {
           </template>
         </Column>
 
-        <Column field="created_at" header="Date" sortable style="width: 8rem">
+        <Column field="amount" header="Amount" sortable style="width: 8rem">
           <template #body="{ data }">
-            <span class="text-surface-400 text-sm tabular-nums">{{ formatDate(data.created_at) }}</span>
+            <span class="font-semibold tabular-nums text-[var(--jafa-text)]">−€{{ (data.cost ?? data.amount).toFixed(2) }}</span>
           </template>
         </Column>
 
-        <Column style="width: 5rem; text-align: right">
+        <Column field="created_at" header="Date" sortable style="width: 9rem">
           <template #body="{ data }">
-            <div class="flex items-center justify-end gap-0.5">
-              <Button icon="pi pi-pencil" severity="secondary" text rounded size="small" @click="openEdit(data)" />
-              <Button icon="pi pi-trash" severity="danger" text rounded size="small" />
+            <span class="text-[var(--jafa-text-muted)] text-[calc(13px*var(--jafa-text-scale,1))] tabular-nums">{{ formatDate(data.created_at) }}</span>
+          </template>
+        </Column>
+
+        <Column header="Actions" style="width: 6rem">
+          <template #header>
+            <span class="w-full text-right block">Actions</span>
+          </template>
+          <template #body="{ data }">
+            <div class="flex items-center justify-end gap-1 opacity-60 hover:opacity-100 transition">
+              <button
+                class="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--jafa-text-muted)] hover:bg-[var(--jafa-border)] hover:text-[var(--jafa-text)] transition"
+                @click="openEdit(data)"
+              >
+                <i class="pi pi-pencil text-[calc(12px*var(--jafa-text-scale,1))]" />
+              </button>
+              <button
+                class="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--jafa-text-muted)] hover:bg-[var(--jafa-border)] hover:text-red-400 transition"
+                @click="removeExpense(data)"
+              >
+                <i class="pi pi-trash text-[calc(12px*var(--jafa-text-scale,1))]" />
+              </button>
             </div>
           </template>
         </Column>
+
+        <template #empty>
+          <div class="flex flex-col items-center gap-2 py-12 text-[var(--jafa-text-muted)]">
+            <div class="w-10 h-10 rounded-full bg-[var(--jafa-surface-3)] flex items-center justify-center">
+              <i class="pi pi-wallet text-[calc(16px*var(--jafa-text-scale,1))]" />
+            </div>
+            <div class="text-[calc(13px*var(--jafa-text-scale,1))]">No expenses to show</div>
+          </div>
+        </template>
       </DataTable>
 
-      <Dialog :visible="!!editingExpense" @update:visible="closeEdit" header="Edit Expense" modal :style="{ width: '24rem' }">
-        <div class="flex flex-col gap-4 pt-1">
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Name</label>
-            <InputText v-model="editName" class="w-full" />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Amount</label>
-            <InputNumber v-model="editAmount" :min="0" :max-fraction-digits="3" class="w-full" />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Cost ($)</label>
-            <InputNumber v-model="editCost" :min="0" :min-fraction-digits="2" :max-fraction-digits="3" prefix="$" class="w-full" />
-          </div>
-        </div>
-        <template #footer>
-          <Button label="Cancel" severity="secondary" text @click="closeEdit" />
-          <Button label="Save" @click="closeEdit" />
-        </template>
-      </Dialog>
+      <AddExpenseModal
+        v-model:visible="showEditModal"
+        :expense="editingExpense"
+        @update:visible="(v: boolean) => { if (!v) editingExpense = null }"
+      />
     </Panel>
 
     <Panel
@@ -513,13 +539,19 @@ function syncRowsFromNames(names: Set<string>) {
       <div class="flex flex-col gap-4 flex-1 min-h-0">
         <div v-if="aggregatedExpenses.length" class="flex flex-col gap-4 flex-1 min-h-0">
           <div class="relative h-[220px] shrink-0 flex items-center justify-center">
-            <Chart
-              v-if="selectedExpenseNames.size > 0"
-              type="doughnut"
-              :data="chartData"
-              :options="chartOptions"
-              class="w-full h-full"
-            />
+            <template v-if="selectedExpenseNames.size > 0">
+              <Chart
+                type="doughnut"
+                :data="chartData"
+                :options="chartOptions"
+                class="w-full h-full"
+              />
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-[calc(10px*var(--jafa-text-scale,1))] uppercase tracking-[0.14em] text-[var(--jafa-text-muted)]">Selected</span>
+                <span class="text-[calc(22px*var(--jafa-text-scale,1))] font-semibold tabular-nums text-[var(--jafa-text)] leading-tight mt-0.5">€{{ chartTotal.toFixed(2) }}</span>
+                <span class="text-[calc(10px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] mt-1">{{ selectedExpenseNames.size }} item{{ selectedExpenseNames.size === 1 ? '' : 's' }}</span>
+              </div>
+            </template>
             <div v-else class="text-center text-surface-400 text-sm px-4">
               <i class="pi pi-chart-pie text-2xl mb-2 block opacity-30" />
               Select an expense to see breakdown
@@ -552,9 +584,9 @@ function syncRowsFromNames(names: Set<string>) {
                 class="w-2.5 h-2.5 rounded-sm shrink-0"
                 :style="{ background: item.color }"
               />
-              <span class="flex-1 text-zinc-400 text-[12px] truncate">{{ item.name }}</span>
-              <span class="text-white tabular-nums text-[12px] font-medium">${{ item.total.toFixed(0) }}</span>
-              <span class="text-zinc-500 text-[11px] w-8 text-right tabular-nums">
+              <span class="flex-1 text-[var(--jafa-text-muted)] text-[calc(12px*var(--jafa-text-scale,1))] truncate">{{ item.name }}</span>
+              <span class="text-[var(--jafa-text)] tabular-nums text-[calc(12px*var(--jafa-text-scale,1))] font-medium">€{{ item.total.toFixed(0) }}</span>
+              <span class="text-[var(--jafa-text-muted)] text-[calc(11px*var(--jafa-text-scale,1))] w-8 text-right tabular-nums">
                 {{ chartTotal && selectedExpenseNames.has(item.name) ? Math.round(item.total / chartTotal * 100) : 0 }}%
               </span>
             </div>

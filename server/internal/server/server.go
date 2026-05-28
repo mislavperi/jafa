@@ -19,13 +19,13 @@ type Server struct {
 	port uint
 }
 
-func NewServer(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController, port uint) *Server {
+func NewServer(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController, preferencesController *controllers.PreferencesController, port uint) *Server {
 	server := &Server{
 		Gin:  gin.Default(),
 		port: port,
 	}
 
-	server.registerRoutes(expenseController, tagController, authController)
+	server.registerRoutes(expenseController, tagController, authController, preferencesController)
 	return server
 }
 
@@ -52,7 +52,7 @@ func sessionSecret() []byte {
 	return []byte(secret)
 }
 
-func (s *Server) registerRoutes(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController) {
+func (s *Server) registerRoutes(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController, preferencesController *controllers.PreferencesController) {
 	store := cookie.NewStore(sessionSecret())
 	store.Options(sessions.Options{
 		Path:     "/",
@@ -62,6 +62,11 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 		SameSite: http.SameSiteLaxMode,
 	})
 	s.Gin.Use(sessions.Sessions("jafa_session", store))
+
+	// Unprotected liveness endpoint for HAProxy/k8s health checks
+	s.Gin.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	authGroup := s.Gin.Group("/auth")
 	authGroup.POST("/login", authController.Login())
@@ -76,6 +81,8 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	expenseGroup.GET("/", expenseController.GetAllExpenses())
 	expenseGroup.POST("/", expenseController.CreateExpense())
 	expenseGroup.GET("/:id", expenseController.GetExpenseById())
+	expenseGroup.PATCH("/:id", expenseController.UpdateExpense())
+	expenseGroup.DELETE("/:id", expenseController.DeleteExpense())
 	expenseGroup.GET("/:id/tags", tagController.GetTagsForExpense())
 	expenseGroup.POST("/:id/tags", tagController.AddTagToExpense())
 	expenseGroup.DELETE("/:id/tags/:tag_id", tagController.RemoveTagFromExpense())
@@ -90,4 +97,8 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	tagGroup := protected.Group("/tags")
 	tagGroup.GET("/", tagController.GetAllTags())
 	tagGroup.POST("/", tagController.CreateTag())
+
+	prefsGroup := protected.Group("/preferences")
+	prefsGroup.GET("", preferencesController.Get())
+	prefsGroup.PUT("", preferencesController.Upsert())
 }

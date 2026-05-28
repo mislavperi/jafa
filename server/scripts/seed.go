@@ -33,6 +33,11 @@ func main() {
 		log.Fatalf("failed to insert admin user: %v", err)
 	}
 	fmt.Println("seeded user: admin / admin")
+
+	var adminUserID int64
+	if err := pool.QueryRow(ctx, "SELECT id FROM users WHERE username = $1", "admin").Scan(&adminUserID); err != nil {
+		log.Fatalf("failed to fetch admin id: %v", err)
+	}
 	_, err = pool.Exec(ctx,
 		"UPDATE users SET avatar_url = $1, first_name = $2, last_name = $3, email = $4 WHERE username = 'admin'",
 		"https://i.pravatar.cc/150?u=admin",
@@ -115,8 +120,8 @@ func main() {
 		var id int64
 		err := pool.QueryRow(
 			ctx,
-			"INSERT INTO tags (name) VALUES ($1) RETURNING id",
-			cat,
+			"INSERT INTO tags (name, user_id) VALUES ($1, $2) RETURNING id",
+			cat, adminUserID,
 		).Scan(&id)
 		if err != nil {
 			log.Fatalf("failed to insert tag: %v", err)
@@ -211,12 +216,13 @@ func main() {
 			var id int64
 			err := pool.QueryRow(
 				ctx,
-				"INSERT INTO expenses (name, amount, cost, item_id, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+				"INSERT INTO expenses (name, amount, cost, item_id, created_at, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
 				tmpl.name,
 				tmpl.amount,
 				cost,
 				itemIDs[tmpl.itemIdx],
 				createdAt,
+				adminUserID,
 			).Scan(&id)
 			if err != nil {
 				log.Fatalf("failed to insert expense: %v", err)

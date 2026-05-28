@@ -50,7 +50,7 @@ function toggleMenu(event: Event) {
 
 <template>
   <nav
-    class="flex flex-col h-full bg-[#0a0a0b] border-r border-[#26262c] transition-all duration-200 overflow-hidden shrink-0"
+    class="flex flex-col h-full bg-[var(--jafa-bg)] border-r border-[var(--jafa-border)] transition-all duration-200 overflow-hidden shrink-0"
     :class="sidebarToggle.isExpanded ? 'w-[248px]' : 'w-[68px]'"
   >
     <!-- Brand -->
@@ -58,7 +58,7 @@ function toggleMenu(event: Event) {
       <img src="/icon.png" class="w-7 h-7 shrink-0" alt=""/>
       <span
         v-if="sidebarToggle.isExpanded"
-        class="text-white font-bold text-[15px] tracking-[0.12em] uppercase whitespace-nowrap"
+        class="text-[var(--jafa-text)] font-bold text-[calc(15px*var(--jafa-text-scale,1))] tracking-[0.12em] uppercase whitespace-nowrap"
       >JAFA</span>
     </div>
 
@@ -68,46 +68,46 @@ function toggleMenu(event: Event) {
         v-for="item in navItems"
         :key="item.label"
         :to="item.to"
-        class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[13px] whitespace-nowrap"
+        class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[calc(13px*var(--jafa-text-scale,1))] whitespace-nowrap"
         :class="[
           isActive(item.to)
-            ? 'bg-[#1f1f24] text-white'
-            : 'text-zinc-400 hover:text-white hover:bg-[#18181c]',
+            ? 'bg-[var(--jafa-surface-3)] text-[var(--jafa-text)]'
+            : 'text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)] hover:bg-[var(--jafa-surface-2)]',
           sidebarToggle.isExpanded ? '' : 'justify-center',
         ]"
       >
-        <i :class="item.icon" class="text-[15px] shrink-0" style="opacity: 0.9" />
+        <i :class="item.icon" class="text-[calc(15px*var(--jafa-text-scale,1))] shrink-0" style="opacity: 0.9" />
         <span v-if="sidebarToggle.isExpanded">{{ item.label }}</span>
       </RouterLink>
     </div>
 
     <!-- Bottom -->
-    <div class="flex flex-col gap-0.5 px-3 py-3 border-t border-[#26262c]">
+    <div class="flex flex-col gap-0.5 px-3 py-3 border-t border-[var(--jafa-border)]">
       <button
-        class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[13px] whitespace-nowrap text-zinc-400 hover:text-white hover:bg-[#18181c]"
+        class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[calc(13px*var(--jafa-text-scale,1))] whitespace-nowrap text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)] hover:bg-[var(--jafa-surface-2)]"
         :class="sidebarToggle.isExpanded ? '' : 'justify-center'"
         @click="darkMode.toggle"
       >
-        <i :class="darkMode.isDark ? 'pi pi-sun' : 'pi pi-moon'" class="text-[15px] shrink-0"/>
+        <i :class="darkMode.isDark ? 'pi pi-sun' : 'pi pi-moon'" class="text-[calc(15px*var(--jafa-text-scale,1))] shrink-0"/>
         <span v-if="sidebarToggle.isExpanded">
           {{ darkMode.isDark ? 'Light mode' : 'Dark mode' }}
         </span>
       </button>
 
       <button
-        class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[13px] whitespace-nowrap text-zinc-400 hover:text-white hover:bg-[#18181c]"
+        class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[calc(13px*var(--jafa-text-scale,1))] whitespace-nowrap text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)] hover:bg-[var(--jafa-surface-2)]"
         :class="sidebarToggle.isExpanded ? '' : 'justify-center'"
         @click="sidebarToggle.toggle"
       >
         <i
           :class="sidebarToggle.isExpanded ? 'pi pi-angle-double-left' : 'pi pi-angle-double-right'"
-          class="text-[15px] shrink-0"
+          class="text-[calc(15px*var(--jafa-text-scale,1))] shrink-0"
         />
         <span v-if="sidebarToggle.isExpanded">Collapse</span>
       </button>
 
       <button
-        class="flex items-center gap-3 px-2 py-2 mt-1 rounded-lg cursor-pointer transition-colors whitespace-nowrap hover:bg-[#18181c]"
+        class="flex items-center gap-3 px-2 py-2 mt-1 rounded-lg cursor-pointer transition-colors whitespace-nowrap hover:bg-[var(--jafa-surface-2)]"
         :class="sidebarToggle.isExpanded ? '' : 'justify-center'"
         @click="toggleMenu"
       >
@@ -119,15 +119,15 @@ function toggleMenu(event: Event) {
         <div
           v-else
           class="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-          style="background: linear-gradient(135deg, #f5c518, #f97316);"
+          style="background: var(--jafa-accent);"
         >
-          <span class="text-[11px] font-bold text-[#1a1a1a]">{{ avatarLabel }}</span>
+          <span class="text-[calc(11px*var(--jafa-text-scale,1))] font-bold text-[#1a1a1a]">{{ avatarLabel }}</span>
         </div>
         <div v-if="sidebarToggle.isExpanded" class="flex flex-col items-start leading-tight overflow-hidden">
-          <span class="text-[12.5px] text-white font-medium truncate max-w-[150px]">
+          <span class="text-[calc(12.5px*var(--jafa-text-scale,1))] text-[var(--jafa-text)] font-medium truncate max-w-[150px]">
             {{ authStore.currentUser?.username ?? 'Account' }}
           </span>
-          <span class="text-[11px] text-zinc-500 truncate max-w-[150px]">
+          <span class="text-[calc(11px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] truncate max-w-[150px]">
             {{ authStore.currentUser?.email ?? 'Sign in' }}
           </span>
         </div>

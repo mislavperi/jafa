@@ -10,7 +10,7 @@ import type { Expense } from '@/modules/expense/models/expense'
 const { data: expenses, isLoading } = useExpenses()
 
 function fmt(val: number) {
-  return '$' + val.toFixed(2)
+  return '€' + val.toFixed(2)
 }
 
 const monthlyTotals = computed(() => {
@@ -76,21 +76,21 @@ const chartOptions = {
     legend: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx: { parsed: { y: number } }) => '$' + ctx.parsed.y.toFixed(2),
+        label: (ctx: { parsed: { y: number } }) => '€' + ctx.parsed.y.toFixed(2),
       },
     },
   },
   scales: {
     x: {
       ticks: { color: '#71717a' },
-      grid: { color: '#26262c' },
+      grid: { color: 'var(--jafa-border)' },
     },
     y: {
       ticks: {
         color: '#71717a',
-        callback: (v: number) => '$' + v,
+        callback: (v: number) => '€' + v,
       },
-      grid: { color: '#26262c' },
+      grid: { color: 'var(--jafa-border)' },
     },
   },
 }
@@ -159,27 +159,27 @@ const categoryAverages = computed(() => {
         />
       </div>
 
-      <div class="bg-[#131316] border border-[#26262c] rounded-[14px] p-5 flex flex-col gap-3">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">Monthly Spend (last 12 months)</p>
+      <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5 flex flex-col gap-3">
+        <p class="text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.08em] text-[var(--jafa-text-muted)]">Monthly Spend (last 12 months)</p>
         <div class="h-64">
           <Chart v-if="!isLoading && sortedMonths.length" type="bar" :data="chartData" :options="chartOptions" class="h-full" />
-          <div v-else-if="isLoading" class="h-full bg-[#1f1f24] rounded animate-pulse" />
-          <div v-else class="h-full flex items-center justify-center text-zinc-500 text-sm">No data yet</div>
+          <div v-else-if="isLoading" class="h-full bg-[var(--jafa-surface-3)] rounded animate-pulse" />
+          <div v-else class="h-full flex items-center justify-center text-[var(--jafa-text-muted)] text-sm">No data yet</div>
         </div>
       </div>
 
-      <div class="bg-[#131316] border border-[#26262c] rounded-[14px] p-5 flex flex-col gap-4">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">Spending by Category</p>
+      <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5 flex flex-col gap-4">
+        <p class="text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.08em] text-[var(--jafa-text-muted)]">Spending by Category</p>
         <div v-if="isLoading" class="flex flex-col gap-3">
-          <div v-for="i in 4" :key="i" class="h-8 bg-[#1f1f24] rounded animate-pulse" />
+          <div v-for="i in 4" :key="i" class="h-8 bg-[var(--jafa-surface-3)] rounded animate-pulse" />
         </div>
         <div v-else-if="categoryAverages.length" class="flex flex-col gap-3">
           <div v-for="cat in categoryAverages" :key="cat.name" class="flex flex-col gap-1">
             <div class="flex items-center justify-between">
-              <span class="text-sm text-white">{{ cat.name }}</span>
-              <span class="text-sm text-zinc-400">{{ fmt(cat.total) }}</span>
+              <span class="text-sm text-[var(--jafa-text)]">{{ cat.name }}</span>
+              <span class="text-sm text-[var(--jafa-text-muted)]">{{ fmt(cat.total) }}</span>
             </div>
-            <div class="h-2 rounded-full bg-[#26262c] overflow-hidden">
+            <div class="h-2 rounded-full bg-[var(--jafa-border)] overflow-hidden">
               <div
                 class="h-full rounded-full transition-all"
                 :style="{ width: cat.pct + '%', backgroundColor: cat.color }"
@@ -187,7 +187,7 @@ const categoryAverages = computed(() => {
             </div>
           </div>
         </div>
-        <div v-else class="text-zinc-500 text-sm">No category data yet</div>
+        <div v-else class="text-[var(--jafa-text-muted)] text-sm">No category data yet</div>
       </div>
     </div>
   </Root>

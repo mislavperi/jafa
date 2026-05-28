@@ -25,10 +25,12 @@ func Server() *server.Server {
 	expenseService := services.NewExpenseService(queries)
 	tagService := services.NewTagService(queries)
 	authService := services.NewAuthService(queries)
+	preferencesService := services.NewPreferencesService(queries)
 
 	expenseController := controllers.NewExpenseController(expenseService)
 	tagController := controllers.NewTagController(tagService)
 	authController := controllers.NewAuthController(authService)
+	preferencesController := controllers.NewPreferencesController(preferencesService)
 
-	return server.NewServer(expenseController, tagController, authController, 8080)
+	return server.NewServer(expenseController, tagController, authController, preferencesController, 8080)
 }

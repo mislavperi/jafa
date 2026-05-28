@@ -1,0 +1,10 @@
+package models
+
+type UserPreferences struct {
+	UserID    int64  `json:"userId"`
+	AccentID  string `json:"accentId"`
+	FontSize  string `json:"fontSize"`
+	DarkMode  bool   `json:"darkMode"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}

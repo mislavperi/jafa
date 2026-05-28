@@ -13,24 +13,27 @@ import (
 
 const addTagToExpense = `-- name: AddTagToExpense :exec
 INSERT INTO expenses_tags (expense_id, tag_id)
-VALUES ($1, $2)
+SELECT $1::bigint, $2::bigint
+WHERE EXISTS (SELECT 1 FROM expenses WHERE id = $1::bigint AND user_id = $3::bigint AND is_deleted = false)
+  AND EXISTS (SELECT 1 FROM tags WHERE id = $2::bigint AND user_id = $3::bigint AND is_deleted = false)
 ON CONFLICT DO NOTHING
 `
 
 type AddTagToExpenseParams struct {
 	ExpenseID int64
 	TagID     int64
+	UserID    int64
 }
 
 func (q *Queries) AddTagToExpense(ctx context.Context, arg AddTagToExpenseParams) error {
-	_, err := q.db.Exec(ctx, addTagToExpense, arg.ExpenseID, arg.TagID)
+	_, err := q.db.Exec(ctx, addTagToExpense, arg.ExpenseID, arg.TagID, arg.UserID)
 	return err
 }
 
 const createExpense = `-- name: CreateExpense :one
-INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date
+INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date, user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date, user_id
 `
 
 type CreateExpenseParams struct {
@@ -40,6 +43,7 @@ type CreateExpenseParams struct {
 	RecurrenceInterval  pgtype.Text
 	RecurrenceDay       pgtype.Int4
 	RecurrenceStartDate pgtype.Date
+	UserID              int64
 }
 
 func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (Expense, error) {
@@ -50,6 +54,7 @@ func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (E
 		arg.RecurrenceInterval,
 		arg.RecurrenceDay,
 		arg.RecurrenceStartDate,
+		arg.UserID,
 	)
 	var i Expense
 	err := row.Scan(
@@ -64,18 +69,24 @@ func (q *Queries) CreateExpense(ctx context.Context, arg CreateExpenseParams) (E
 		&i.RecurrenceInterval,
 		&i.RecurrenceDay,
 		&i.RecurrenceStartDate,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const createTag = `-- name: CreateTag :one
-INSERT INTO tags (name)
-VALUES ($1)
-RETURNING id, name, created_at, updated_at, is_deleted
+INSERT INTO tags (name, user_id)
+VALUES ($1, $2)
+RETURNING id, name, created_at, updated_at, is_deleted, user_id
 `
 
-func (q *Queries) CreateTag(ctx context.Context, name string) (Tag, error) {
-	row := q.db.QueryRow(ctx, createTag, name)
+type CreateTagParams struct {
+	Name   string
+	UserID int64
+}
+
+func (q *Queries) CreateTag(ctx context.Context, arg CreateTagParams) (Tag, error) {
+	row := q.db.QueryRow(ctx, createTag, arg.Name, arg.UserID)
 	var i Tag
 	err := row.Scan(
 		&i.ID,
@@ -83,6 +94,7 @@ func (q *Queries) CreateTag(ctx context.Context, name string) (Tag, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.IsDeleted,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -136,11 +148,12 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const getAllExpenses = `-- name: GetAllExpenses :many
-SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date from expenses
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date, user_id FROM expenses
+WHERE user_id=$1 AND is_deleted = false
 `
 
-func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
-	rows, err := q.db.Query(ctx, getAllExpenses)
+func (q *Queries) GetAllExpenses(ctx context.Context, userID int64) ([]Expense, error) {
+	rows, err := q.db.Query(ctx, getAllExpenses, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -160,6 +173,7 @@ func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
 			&i.RecurrenceInterval,
 			&i.RecurrenceDay,
 			&i.RecurrenceStartDate,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -172,14 +186,14 @@ func (q *Queries) GetAllExpenses(ctx context.Context) ([]Expense, error) {
 }
 
 const getAllTags = `-- name: GetAllTags :many
-SELECT id, name, created_at, updated_at, is_deleted
+SELECT id, name, created_at, updated_at, is_deleted, user_id
 FROM tags
-WHERE is_deleted = false
+WHERE is_deleted = false AND user_id = $1
 ORDER BY name
 `
 
-func (q *Queries) GetAllTags(ctx context.Context) ([]Tag, error) {
-	rows, err := q.db.Query(ctx, getAllTags)
+func (q *Queries) GetAllTags(ctx context.Context, userID int64) ([]Tag, error) {
+	rows, err := q.db.Query(ctx, getAllTags, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,6 +207,7 @@ func (q *Queries) GetAllTags(ctx context.Context) ([]Tag, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.IsDeleted,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -208,18 +223,24 @@ const getDailySpend = `-- name: GetDailySpend :many
 SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
-  AND created_at >= (date_trunc('month', CURRENT_TIMESTAMP) - ($1::int || ' months')::interval)
+  AND user_id = $1::bigint
+  AND created_at >= (date_trunc('month', CURRENT_TIMESTAMP) - ($2::int || ' months')::interval)
 GROUP BY created_at::date
 ORDER BY day
 `
+
+type GetDailySpendParams struct {
+	UserID int64
+	Months int32
+}
 
 type GetDailySpendRow struct {
 	Day   pgtype.Date
 	Total pgtype.Numeric
 }
 
-func (q *Queries) GetDailySpend(ctx context.Context, months int32) ([]GetDailySpendRow, error) {
-	rows, err := q.db.Query(ctx, getDailySpend, months)
+func (q *Queries) GetDailySpend(ctx context.Context, arg GetDailySpendParams) ([]GetDailySpendRow, error) {
+	rows, err := q.db.Query(ctx, getDailySpend, arg.UserID, arg.Months)
 	if err != nil {
 		return nil, err
 	}
@@ -242,15 +263,17 @@ const getDailySpendForMonth = `-- name: GetDailySpendForMonth :many
 SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
-  AND EXTRACT(YEAR FROM created_at) = $1::int
-  AND EXTRACT(MONTH FROM created_at) = $2::int
+  AND user_id = $1::bigint
+  AND EXTRACT(YEAR FROM created_at) = $2::int
+  AND EXTRACT(MONTH FROM created_at) = $3::int
 GROUP BY created_at::date
 ORDER BY day
 `
 
 type GetDailySpendForMonthParams struct {
-	Year  int32
-	Month int32
+	UserID int64
+	Year   int32
+	Month  int32
 }
 
 type GetDailySpendForMonthRow struct {
@@ -259,7 +282,7 @@ type GetDailySpendForMonthRow struct {
 }
 
 func (q *Queries) GetDailySpendForMonth(ctx context.Context, arg GetDailySpendForMonthParams) ([]GetDailySpendForMonthRow, error) {
-	rows, err := q.db.Query(ctx, getDailySpendForMonth, arg.Year, arg.Month)
+	rows, err := q.db.Query(ctx, getDailySpendForMonth, arg.UserID, arg.Year, arg.Month)
 	if err != nil {
 		return nil, err
 	}
@@ -279,12 +302,18 @@ func (q *Queries) GetDailySpendForMonth(ctx context.Context, arg GetDailySpendFo
 }
 
 const getExpenseById = `-- name: GetExpenseById :one
-SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date FROM expenses 
-WHERE id=$1 LIMIT 1
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date, user_id FROM expenses
+WHERE id=$1 AND user_id=$2 AND is_deleted = false
+LIMIT 1
 `
 
-func (q *Queries) GetExpenseById(ctx context.Context, id int64) (Expense, error) {
-	row := q.db.QueryRow(ctx, getExpenseById, id)
+type GetExpenseByIdParams struct {
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) GetExpenseById(ctx context.Context, arg GetExpenseByIdParams) (Expense, error) {
+	row := q.db.QueryRow(ctx, getExpenseById, arg.ID, arg.UserID)
 	var i Expense
 	err := row.Scan(
 		&i.ID,
@@ -298,44 +327,36 @@ func (q *Queries) GetExpenseById(ctx context.Context, id int64) (Expense, error)
 		&i.RecurrenceInterval,
 		&i.RecurrenceDay,
 		&i.RecurrenceStartDate,
+		&i.UserID,
 	)
 	return i, err
 }
 
 const getExpensesByMonth = `-- name: GetExpensesByMonth :many
-SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at
+SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date, user_id
 FROM expenses
 WHERE is_deleted = false
-  AND EXTRACT(YEAR FROM created_at) = $1::int
-  AND EXTRACT(MONTH FROM created_at) = $2::int
+  AND user_id = $1::bigint
+  AND EXTRACT(YEAR FROM created_at) = $2::int
+  AND EXTRACT(MONTH FROM created_at) = $3::int
 ORDER BY created_at
 `
 
 type GetExpensesByMonthParams struct {
-	Year  int32
-	Month int32
+	UserID int64
+	Year   int32
+	Month  int32
 }
 
-type GetExpensesByMonthRow struct {
-	ID        int64
-	Name      string
-	Amount    pgtype.Numeric
-	Cost      pgtype.Numeric
-	ItemID    pgtype.Int8
-	IsDeleted bool
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-}
-
-func (q *Queries) GetExpensesByMonth(ctx context.Context, arg GetExpensesByMonthParams) ([]GetExpensesByMonthRow, error) {
-	rows, err := q.db.Query(ctx, getExpensesByMonth, arg.Year, arg.Month)
+func (q *Queries) GetExpensesByMonth(ctx context.Context, arg GetExpensesByMonthParams) ([]Expense, error) {
+	rows, err := q.db.Query(ctx, getExpensesByMonth, arg.UserID, arg.Year, arg.Month)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetExpensesByMonthRow
+	var items []Expense
 	for rows.Next() {
-		var i GetExpensesByMonthRow
+		var i Expense
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -345,6 +366,10 @@ func (q *Queries) GetExpensesByMonth(ctx context.Context, arg GetExpensesByMonth
 			&i.IsDeleted,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.RecurrenceInterval,
+			&i.RecurrenceDay,
+			&i.RecurrenceStartDate,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -359,26 +384,35 @@ func (q *Queries) GetExpensesByMonth(ctx context.Context, arg GetExpensesByMonth
 const getFirstExpenseDate = `-- name: GetFirstExpenseDate :one
 SELECT COALESCE(TO_CHAR(MIN(created_at::date), 'YYYY-MM-DD'), '') AS first_date
 FROM expenses
-WHERE is_deleted = false
+WHERE is_deleted = false AND user_id = $1
 `
 
-func (q *Queries) GetFirstExpenseDate(ctx context.Context) (interface{}, error) {
-	row := q.db.QueryRow(ctx, getFirstExpenseDate)
+func (q *Queries) GetFirstExpenseDate(ctx context.Context, userID int64) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getFirstExpenseDate, userID)
 	var first_date interface{}
 	err := row.Scan(&first_date)
 	return first_date, err
 }
 
 const getTagsForExpense = `-- name: GetTagsForExpense :many
-SELECT t.id, t.name, t.created_at, t.updated_at, t.is_deleted
+SELECT t.id, t.name, t.created_at, t.updated_at, t.is_deleted, t.user_id
 FROM tags t
 JOIN expenses_tags et ON t.id = et.tag_id
-WHERE et.expense_id = $1 AND t.is_deleted = false
+JOIN expenses e ON e.id = et.expense_id
+WHERE et.expense_id = $1
+  AND e.user_id = $2
+  AND t.user_id = $2
+  AND t.is_deleted = false
 ORDER BY t.name
 `
 
-func (q *Queries) GetTagsForExpense(ctx context.Context, expenseID int64) ([]Tag, error) {
-	rows, err := q.db.Query(ctx, getTagsForExpense, expenseID)
+type GetTagsForExpenseParams struct {
+	ExpenseID int64
+	UserID    int64
+}
+
+func (q *Queries) GetTagsForExpense(ctx context.Context, arg GetTagsForExpenseParams) ([]Tag, error) {
+	rows, err := q.db.Query(ctx, getTagsForExpense, arg.ExpenseID, arg.UserID)
 	if err != nil {
 		return nil, err
 	}
@@ -392,6 +426,7 @@ func (q *Queries) GetTagsForExpense(ctx context.Context, expenseID int64) ([]Tag
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.IsDeleted,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}
@@ -407,11 +442,12 @@ const getTotalSpendThisMonth = `-- name: GetTotalSpendThisMonth :one
 SELECT COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
+  AND user_id = $1
   AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
 `
 
-func (q *Queries) GetTotalSpendThisMonth(ctx context.Context) (pgtype.Numeric, error) {
-	row := q.db.QueryRow(ctx, getTotalSpendThisMonth)
+func (q *Queries) GetTotalSpendThisMonth(ctx context.Context, userID int64) (pgtype.Numeric, error) {
+	row := q.db.QueryRow(ctx, getTotalSpendThisMonth, userID)
 	var total pgtype.Numeric
 	err := row.Scan(&total)
 	return total, err
@@ -450,17 +486,144 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 	return i, err
 }
 
+const getUserPreferences = `-- name: GetUserPreferences :one
+SELECT user_id, accent_id, font_size, dark_mode, created_at, updated_at FROM user_preferences WHERE user_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetUserPreferences(ctx context.Context, userID int64) (UserPreference, error) {
+	row := q.db.QueryRow(ctx, getUserPreferences, userID)
+	var i UserPreference
+	err := row.Scan(
+		&i.UserID,
+		&i.AccentID,
+		&i.FontSize,
+		&i.DarkMode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const removeTagFromExpense = `-- name: RemoveTagFromExpense :exec
 DELETE FROM expenses_tags
-WHERE expense_id = $1 AND tag_id = $2
+WHERE expense_id = $1::bigint AND tag_id = $2::bigint
+  AND EXISTS (SELECT 1 FROM expenses WHERE id = $1::bigint AND user_id = $3::bigint)
 `
 
 type RemoveTagFromExpenseParams struct {
 	ExpenseID int64
 	TagID     int64
+	UserID    int64
 }
 
 func (q *Queries) RemoveTagFromExpense(ctx context.Context, arg RemoveTagFromExpenseParams) error {
-	_, err := q.db.Exec(ctx, removeTagFromExpense, arg.ExpenseID, arg.TagID)
+	_, err := q.db.Exec(ctx, removeTagFromExpense, arg.ExpenseID, arg.TagID, arg.UserID)
 	return err
+}
+
+const softDeleteExpense = `-- name: SoftDeleteExpense :exec
+UPDATE expenses
+SET is_deleted = true,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2
+`
+
+type SoftDeleteExpenseParams struct {
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) SoftDeleteExpense(ctx context.Context, arg SoftDeleteExpenseParams) error {
+	_, err := q.db.Exec(ctx, softDeleteExpense, arg.ID, arg.UserID)
+	return err
+}
+
+const updateExpense = `-- name: UpdateExpense :one
+UPDATE expenses
+SET name = $3,
+    amount = $4,
+    cost = $5,
+    recurrence_interval = $6,
+    recurrence_day = $7,
+    recurrence_start_date = $8,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND is_deleted = false
+RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date, user_id
+`
+
+type UpdateExpenseParams struct {
+	ID                  int64
+	UserID              int64
+	Name                string
+	Amount              pgtype.Numeric
+	Cost                pgtype.Numeric
+	RecurrenceInterval  pgtype.Text
+	RecurrenceDay       pgtype.Int4
+	RecurrenceStartDate pgtype.Date
+}
+
+func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (Expense, error) {
+	row := q.db.QueryRow(ctx, updateExpense,
+		arg.ID,
+		arg.UserID,
+		arg.Name,
+		arg.Amount,
+		arg.Cost,
+		arg.RecurrenceInterval,
+		arg.RecurrenceDay,
+		arg.RecurrenceStartDate,
+	)
+	var i Expense
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Amount,
+		&i.Cost,
+		&i.ItemID,
+		&i.IsDeleted,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RecurrenceInterval,
+		&i.RecurrenceDay,
+		&i.RecurrenceStartDate,
+		&i.UserID,
+	)
+	return i, err
+}
+
+const upsertUserPreferences = `-- name: UpsertUserPreferences :one
+INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id) DO UPDATE
+  SET accent_id = EXCLUDED.accent_id,
+      font_size = EXCLUDED.font_size,
+      dark_mode = EXCLUDED.dark_mode,
+      updated_at = NOW()
+RETURNING user_id, accent_id, font_size, dark_mode, created_at, updated_at
+`
+
+type UpsertUserPreferencesParams struct {
+	UserID   int64
+	AccentID string
+	FontSize string
+	DarkMode bool
+}
+
+func (q *Queries) UpsertUserPreferences(ctx context.Context, arg UpsertUserPreferencesParams) (UserPreference, error) {
+	row := q.db.QueryRow(ctx, upsertUserPreferences,
+		arg.UserID,
+		arg.AccentID,
+		arg.FontSize,
+		arg.DarkMode,
+	)
+	var i UserPreference
+	err := row.Scan(
+		&i.UserID,
+		&i.AccentID,
+		&i.FontSize,
+		&i.DarkMode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend, getFirstExpenseDate, getDailySpendForMonth, getExpensesByMonth, createExpense } from '../api/expense'
+import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend, getFirstExpenseDate, getDailySpendForMonth, getExpensesByMonth, createExpense, updateExpense, deleteExpense } from '../api/expense'
+import type { RecurringSchedule } from '../models/expense'
 import type { Ref } from 'vue'
 
 export function useExpenses() {
@@ -55,6 +56,27 @@ export function useCreateExpense() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: createExpense,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    },
+  })
+}
+
+export function useUpdateExpense() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: number; name: string; amount: number; cost: number; recurringSchedule?: RecurringSchedule }) =>
+      updateExpense(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    },
+  })
+}
+
+export function useDeleteExpense() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteExpense,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
     },

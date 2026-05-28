@@ -9,7 +9,7 @@ const currentMonth = new Date().toLocaleString('default', { month: 'long', year:
 <template>
   <AppStatCard
     label="Spent"
-    :value="monthlyTotal ? `$${monthlyTotal.total.toFixed(2)}` : '$0.00'"
+    :value="monthlyTotal ? `€${monthlyTotal.total.toFixed(2)}` : '€0.00'"
     :subtitle="currentMonth"
     :loading="isLoading"
     icon="pi pi-wallet"

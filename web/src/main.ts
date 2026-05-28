@@ -320,4 +320,8 @@ app.use(createPinia())
 app.use(VueQueryPlugin, { queryClient })
 app.use(router)
 
+// Initialize theme store so CSS vars apply before mount
+import { useThemeStore } from '@/stores/theme'
+useThemeStore()
+
 app.mount('#app')

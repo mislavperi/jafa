@@ -20,40 +20,48 @@ func NewTagService(queries *psql.Queries) *TagService {
 	}
 }
 
-func (ts *TagService) GetAllTags() ([]models.Tag, error) {
-	tags, err := ts.Queries.GetAllTags(context.Background())
+func (ts *TagService) GetAllTags(userID int64) ([]models.Tag, error) {
+	tags, err := ts.Queries.GetAllTags(context.Background(), userID)
 	if err != nil {
 		return nil, err
 	}
 	return ts.Mapper.MapManyToDomain(tags)
 }
 
-func (ts *TagService) CreateTag(name string) (models.Tag, error) {
-	tag, err := ts.Queries.CreateTag(context.Background(), name)
+func (ts *TagService) CreateTag(userID int64, name string) (models.Tag, error) {
+	tag, err := ts.Queries.CreateTag(context.Background(), psql.CreateTagParams{
+		Name:   name,
+		UserID: userID,
+	})
 	if err != nil {
 		return models.Tag{}, err
 	}
 	return ts.Mapper.MapToDomain(tag)
 }
 
-func (ts *TagService) GetTagsForExpense(expenseID int64) ([]models.Tag, error) {
-	tags, err := ts.Queries.GetTagsForExpense(context.Background(), expenseID)
+func (ts *TagService) GetTagsForExpense(userID, expenseID int64) ([]models.Tag, error) {
+	tags, err := ts.Queries.GetTagsForExpense(context.Background(), psql.GetTagsForExpenseParams{
+		ExpenseID: expenseID,
+		UserID:    userID,
+	})
 	if err != nil {
 		return nil, err
 	}
 	return ts.Mapper.MapManyToDomain(tags)
 }
 
-func (ts *TagService) AddTagToExpense(expenseID, tagID int64) error {
+func (ts *TagService) AddTagToExpense(userID, expenseID, tagID int64) error {
 	return ts.Queries.AddTagToExpense(context.Background(), psql.AddTagToExpenseParams{
 		ExpenseID: expenseID,
 		TagID:     tagID,
+		UserID:    userID,
 	})
 }
 
-func (ts *TagService) RemoveTagFromExpense(expenseID, tagID int64) error {
+func (ts *TagService) RemoveTagFromExpense(userID, expenseID, tagID int64) error {
 	return ts.Queries.RemoveTagFromExpense(context.Background(), psql.RemoveTagFromExpenseParams{
 		ExpenseID: expenseID,
 		TagID:     tagID,
+		UserID:    userID,
 	})
 }

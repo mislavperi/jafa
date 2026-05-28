@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getMe } from '@/modules/auth/api/auth'
+import { useThemeStore } from '@/stores/theme'
+import { useDarkModeStore } from '@/stores/darkMode'
+import { getMe, AuthRequiredError } from '@/modules/auth/api/auth'
 import { queryClient } from '@/core/query'
 
 const router = createRouter({
@@ -58,8 +60,17 @@ router.beforeEach(async (to) => {
     try {
       const user = await queryClient.fetchQuery({ queryKey: ['auth', 'me'], queryFn: getMe })
       authStore.setUser(user)
-    } catch {
-      authStore.clearUser()
+      const dark = useDarkModeStore()
+      const theme = useThemeStore()
+      await theme.load(dark.isDark)
+    } catch (err) {
+      // Only clear auth on explicit auth failure. Network/5xx → leave state alone
+      // so transient outages don't kick users out.
+      if (err instanceof AuthRequiredError) {
+        authStore.clearUser()
+      } else {
+        console.warn('Auth bootstrap failed (non-auth error):', err)
+      }
     }
     authStore.setBootstrapped()
   }
