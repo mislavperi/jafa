@@ -5,10 +5,10 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/server/internal/server/httperr"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
+	"github.com/mislavperi/jafa/server/internal/server/httperr"
 	"github.com/mislavperi/jafa/server/internal/server/middleware"
 )
 

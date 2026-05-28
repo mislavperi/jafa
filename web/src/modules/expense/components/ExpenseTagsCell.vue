@@ -5,7 +5,7 @@ import { useExpenseTags } from '../composables/useTags'
 const props = defineProps<{ expenseId: number }>()
 const { data: rawTags, isLoading } = useExpenseTags(toRef(props, 'expenseId'))
 const tags = computed(() => {
-  if (!rawTags.value) return rawTags.value
+  if (!rawTags.value) return []
   const seen = new Set<number>()
   return rawTags.value.filter((t) => { if (seen.has(t.id)) return false; seen.add(t.id); return true })
 })

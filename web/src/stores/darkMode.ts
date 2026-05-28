@@ -9,6 +9,7 @@ export const useDarkModeStore = defineStore('darkMode', () => {
   const isDark = ref(stored !== null ? stored === 'true' : prefersDark)
 
   function apply() {
+    if (typeof document === 'undefined') return
     document.documentElement.classList.toggle('p-dark', isDark.value)
   }
 
