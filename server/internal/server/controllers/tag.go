@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mislavperi/jafa/server/internal/server/httperr"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
 
 	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
@@ -20,9 +21,13 @@ func NewTagController(tagService *services.TagService) *TagController {
 
 func (tc *TagController) GetAllTags() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		tags, err := tc.tagService.GetAllTags()
+		uid, ok := requireUser(ctx)
+		if !ok {
+			return
+		}
+		tags, err := tc.tagService.GetAllTags(uid)
 		if err != nil {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+			httperr.Internal(ctx, err)
 			return
 		}
 		ctx.JSON(http.StatusOK, tags)
@@ -31,14 +36,18 @@ func (tc *TagController) GetAllTags() gin.HandlerFunc {
 
 func (tc *TagController) CreateTag() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var req requestmodels.CreateTagRequest
-		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		uid, ok := requireUser(ctx)
+		if !ok {
 			return
 		}
-		tag, err := tc.tagService.CreateTag(req.Name)
+		var req requestmodels.CreateTagRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			httperr.BadRequest(ctx, err.Error(), err)
+			return
+		}
+		tag, err := tc.tagService.CreateTag(uid, req.Name)
 		if err != nil {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+			httperr.Internal(ctx, err)
 			return
 		}
 		ctx.JSON(http.StatusCreated, tag)
@@ -47,14 +56,18 @@ func (tc *TagController) CreateTag() gin.HandlerFunc {
 
 func (tc *TagController) GetTagsForExpense() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		id, err := strconv.Atoi(ctx.Param("id"))
-		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid expense id"})
+		uid, ok := requireUser(ctx)
+		if !ok {
 			return
 		}
-		tags, err := tc.tagService.GetTagsForExpense(int64(id))
+		id, err := strconv.Atoi(ctx.Param("id"))
 		if err != nil {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+			httperr.BadRequest(ctx, "invalid expense id", nil)
+			return
+		}
+		tags, err := tc.tagService.GetTagsForExpense(uid, int64(id))
+		if err != nil {
+			httperr.Internal(ctx, err)
 			return
 		}
 		ctx.JSON(http.StatusOK, tags)
@@ -67,18 +80,22 @@ type addTagToExpenseRequest struct {
 
 func (tc *TagController) AddTagToExpense() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		uid, ok := requireUser(ctx)
+		if !ok {
+			return
+		}
 		id, err := strconv.Atoi(ctx.Param("id"))
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid expense id"})
+			httperr.BadRequest(ctx, "invalid expense id", nil)
 			return
 		}
 		var req addTagToExpenseRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
-		if err := tc.tagService.AddTagToExpense(int64(id), req.TagID); err != nil {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+		if err := tc.tagService.AddTagToExpense(uid, int64(id), req.TagID); err != nil {
+			httperr.Internal(ctx, err)
 			return
 		}
 		ctx.Status(http.StatusNoContent)
@@ -87,18 +104,22 @@ func (tc *TagController) AddTagToExpense() gin.HandlerFunc {
 
 func (tc *TagController) RemoveTagFromExpense() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		uid, ok := requireUser(ctx)
+		if !ok {
+			return
+		}
 		id, err := strconv.Atoi(ctx.Param("id"))
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid expense id"})
+			httperr.BadRequest(ctx, "invalid expense id", nil)
 			return
 		}
 		tagID, err := strconv.Atoi(ctx.Param("tag_id"))
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid tag id"})
+			httperr.BadRequest(ctx, "invalid tag id", nil)
 			return
 		}
-		if err := tc.tagService.RemoveTagFromExpense(int64(id), int64(tagID)); err != nil {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+		if err := tc.tagService.RemoveTagFromExpense(uid, int64(id), int64(tagID)); err != nil {
+			httperr.Internal(ctx, err)
 			return
 		}
 		ctx.Status(http.StatusNoContent)

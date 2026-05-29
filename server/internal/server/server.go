@@ -63,6 +63,11 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	})
 	s.Gin.Use(sessions.Sessions("jafa_session", store))
 
+	// Unprotected liveness endpoint for HAProxy/k8s health checks
+	s.Gin.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
 	authGroup := s.Gin.Group("/auth")
 	authGroup.POST("/login", authController.Login())
 	authGroup.POST("/logout", authController.Logout())
@@ -76,6 +81,8 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	expenseGroup.GET("/", expenseController.GetAllExpenses())
 	expenseGroup.POST("/", expenseController.CreateExpense())
 	expenseGroup.GET("/:id", expenseController.GetExpenseById())
+	expenseGroup.PATCH("/:id", expenseController.UpdateExpense())
+	expenseGroup.DELETE("/:id", expenseController.DeleteExpense())
 	expenseGroup.GET("/:id/tags", tagController.GetTagsForExpense())
 	expenseGroup.POST("/:id/tags", tagController.AddTagToExpense())
 	expenseGroup.DELETE("/:id/tags/:tag_id", tagController.RemoveTagFromExpense())
