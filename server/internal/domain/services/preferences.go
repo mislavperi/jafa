@@ -34,6 +34,7 @@ func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) 
 				AccentID: "amber",
 				FontSize: "normal",
 				DarkMode: true,
+				Currency: "EUR",
 			}, nil
 		}
 		return models.UserPreferences{}, err
@@ -43,6 +44,7 @@ func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) 
 		AccentID:  row.AccentID,
 		FontSize:  row.FontSize,
 		DarkMode:  row.DarkMode,
+		Currency:  row.Currency,
 		CreatedAt: formatRFC3339(row.CreatedAt),
 		UpdatedAt: formatRFC3339(row.UpdatedAt),
 	}, nil
@@ -54,6 +56,7 @@ func (ps *PreferencesService) Upsert(input models.UpsertPreferencesInput) (model
 		AccentID: input.AccentID,
 		FontSize: input.FontSize,
 		DarkMode: input.DarkMode,
+		Currency: input.Currency,
 	})
 	if err != nil {
 		return models.UserPreferences{}, err
@@ -63,6 +66,7 @@ func (ps *PreferencesService) Upsert(input models.UpsertPreferencesInput) (model
 		AccentID:  row.AccentID,
 		FontSize:  row.FontSize,
 		DarkMode:  row.DarkMode,
+		Currency:  row.Currency,
 		CreatedAt: formatRFC3339(row.CreatedAt),
 		UpdatedAt: formatRFC3339(row.UpdatedAt),
 	}, nil

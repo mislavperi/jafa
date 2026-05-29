@@ -108,12 +108,13 @@ ORDER BY day;
 SELECT * FROM user_preferences WHERE user_id = $1 LIMIT 1;
 
 -- name: UpsertUserPreferences :one
-INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode)
-VALUES ($1, $2, $3, $4)
+INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode, currency)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (user_id) DO UPDATE
   SET accent_id = EXCLUDED.accent_id,
       font_size = EXCLUDED.font_size,
       dark_mode = EXCLUDED.dark_mode,
+      currency = EXCLUDED.currency,
       updated_at = NOW()
 RETURNING *;
 

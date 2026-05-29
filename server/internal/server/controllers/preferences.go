@@ -21,6 +21,7 @@ type upsertPreferencesRequest struct {
 	AccentID string `json:"accentId" binding:"required"`
 	FontSize string `json:"fontSize" binding:"required"`
 	DarkMode bool   `json:"darkMode"`
+	Currency string `json:"currency"`
 }
 
 func (pc *PreferencesController) Get() gin.HandlerFunc {
@@ -49,11 +50,15 @@ func (pc *PreferencesController) Upsert() gin.HandlerFunc {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
+		if req.Currency == "" {
+			req.Currency = "EUR"
+		}
 		prefs, err := pc.preferencesService.Upsert(models.UpsertPreferencesInput{
 			UserID:   uid,
 			AccentID: req.AccentID,
 			FontSize: req.FontSize,
 			DarkMode: req.DarkMode,
+			Currency: req.Currency,
 		})
 		if err != nil {
 			httperr.Internal(ctx, err)

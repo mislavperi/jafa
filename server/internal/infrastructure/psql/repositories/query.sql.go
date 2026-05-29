@@ -487,7 +487,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (GetUs
 }
 
 const getUserPreferences = `-- name: GetUserPreferences :one
-SELECT user_id, accent_id, font_size, dark_mode, created_at, updated_at FROM user_preferences WHERE user_id = $1 LIMIT 1
+SELECT user_id, accent_id, font_size, dark_mode, created_at, updated_at, currency FROM user_preferences WHERE user_id = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserPreferences(ctx context.Context, userID int64) (UserPreference, error) {
@@ -500,6 +500,7 @@ func (q *Queries) GetUserPreferences(ctx context.Context, userID int64) (UserPre
 		&i.DarkMode,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Currency,
 	)
 	return i, err
 }
@@ -592,14 +593,15 @@ func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (E
 }
 
 const upsertUserPreferences = `-- name: UpsertUserPreferences :one
-INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode)
-VALUES ($1, $2, $3, $4)
+INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode, currency)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (user_id) DO UPDATE
   SET accent_id = EXCLUDED.accent_id,
       font_size = EXCLUDED.font_size,
       dark_mode = EXCLUDED.dark_mode,
+      currency = EXCLUDED.currency,
       updated_at = NOW()
-RETURNING user_id, accent_id, font_size, dark_mode, created_at, updated_at
+RETURNING user_id, accent_id, font_size, dark_mode, created_at, updated_at, currency
 `
 
 type UpsertUserPreferencesParams struct {
@@ -607,6 +609,7 @@ type UpsertUserPreferencesParams struct {
 	AccentID string
 	FontSize string
 	DarkMode bool
+	Currency string
 }
 
 func (q *Queries) UpsertUserPreferences(ctx context.Context, arg UpsertUserPreferencesParams) (UserPreference, error) {
@@ -615,6 +618,7 @@ func (q *Queries) UpsertUserPreferences(ctx context.Context, arg UpsertUserPrefe
 		arg.AccentID,
 		arg.FontSize,
 		arg.DarkMode,
+		arg.Currency,
 	)
 	var i UserPreference
 	err := row.Scan(
@@ -624,6 +628,7 @@ func (q *Queries) UpsertUserPreferences(ctx context.Context, arg UpsertUserPrefe
 		&i.DarkMode,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Currency,
 	)
 	return i, err
 }

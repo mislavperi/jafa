@@ -73,4 +73,5 @@ type UserPreference struct {
 	DarkMode  bool
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+	Currency  string
 }

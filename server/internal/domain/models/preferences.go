@@ -5,6 +5,7 @@ type UserPreferences struct {
 	AccentID  string `json:"accentId"`
 	FontSize  string `json:"fontSize"`
 	DarkMode  bool   `json:"darkMode"`
+	Currency  string `json:"currency"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
@@ -14,4 +15,5 @@ type UpsertPreferencesInput struct {
 	AccentID string
 	FontSize string
 	DarkMode bool
+	Currency string
 }
