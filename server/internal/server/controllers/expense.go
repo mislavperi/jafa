@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -217,6 +218,10 @@ func (ec *ExpenseController) UpdateExpense() gin.HandlerFunc {
 			RecurringSchedule: recurringSchedule,
 		})
 		if err != nil {
+			if errors.Is(err, services.ErrExpenseNotFound) {
+				httperr.NotFound(ctx, "expense not found")
+				return
+			}
 			httperr.Internal(ctx, err)
 			return
 		}
@@ -236,6 +241,10 @@ func (ec *ExpenseController) DeleteExpense() gin.HandlerFunc {
 			return
 		}
 		if err := ec.expenseService.DeleteExpense(uid, int64(id)); err != nil {
+			if errors.Is(err, services.ErrExpenseNotFound) {
+				httperr.NotFound(ctx, "expense not found")
+				return
+			}
 			httperr.Internal(ctx, err)
 			return
 		}
@@ -256,6 +265,10 @@ func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 		}
 		expense, err := ec.expenseService.GetById(uid, int64(id))
 		if err != nil {
+			if errors.Is(err, services.ErrExpenseNotFound) {
+				httperr.NotFound(ctx, "expense not found")
+				return
+			}
 			httperr.Internal(ctx, err)
 			return
 		}

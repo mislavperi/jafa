@@ -49,7 +49,7 @@ SET name = $3,
 WHERE id = $1 AND user_id = $2 AND is_deleted = false
 RETURNING *;
 
--- name: SoftDeleteExpense :exec
+-- name: SoftDeleteExpense :execrows
 UPDATE expenses
 SET is_deleted = true,
     updated_at = CURRENT_TIMESTAMP

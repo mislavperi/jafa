@@ -503,7 +503,7 @@ func (q *Queries) RemoveTagFromExpense(ctx context.Context, arg RemoveTagFromExp
 	return err
 }
 
-const softDeleteExpense = `-- name: SoftDeleteExpense :exec
+const softDeleteExpense = `-- name: SoftDeleteExpense :execrows
 UPDATE expenses
 SET is_deleted = true,
     updated_at = CURRENT_TIMESTAMP
@@ -515,9 +515,12 @@ type SoftDeleteExpenseParams struct {
 	UserID int64
 }
 
-func (q *Queries) SoftDeleteExpense(ctx context.Context, arg SoftDeleteExpenseParams) error {
-	_, err := q.db.Exec(ctx, softDeleteExpense, arg.ID, arg.UserID)
-	return err
+func (q *Queries) SoftDeleteExpense(ctx context.Context, arg SoftDeleteExpenseParams) (int64, error) {
+	result, err := q.db.Exec(ctx, softDeleteExpense, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const updateExpense = `-- name: UpdateExpense :one

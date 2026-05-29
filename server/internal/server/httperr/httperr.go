@@ -24,6 +24,11 @@ func BadRequest(ctx *gin.Context, message string, err error) {
 	Respond(ctx, http.StatusBadRequest, message, err)
 }
 
+// NotFound is shorthand for 404.
+func NotFound(ctx *gin.Context, message string) {
+	Respond(ctx, http.StatusNotFound, message, nil)
+}
+
 // Internal is shorthand for 500.
 func Internal(ctx *gin.Context, err error) {
 	Respond(ctx, http.StatusInternalServerError, "internal server error", err)

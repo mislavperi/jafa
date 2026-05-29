@@ -2,13 +2,19 @@ package services
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 	"github.com/mislavperi/jafa/server/utils"
 )
+
+// ErrExpenseNotFound is returned when an expense does not exist or is not owned
+// by the requesting user. Controllers map this to HTTP 404.
+var ErrExpenseNotFound = errors.New("expense not found")
 
 type ExpenseService struct {
 	Queries *psql.Queries
@@ -190,16 +196,26 @@ func (es *ExpenseService) UpdateExpense(input UpdateExpenseInput) (models.Expens
 		RecurrenceStartDate: recurrenceStartDate,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Expense{}, ErrExpenseNotFound
+		}
 		return models.Expense{}, err
 	}
 	return es.Mapper.MapToDomain(expense)
 }
 
 func (es *ExpenseService) DeleteExpense(userID, id int64) error {
-	return es.Queries.SoftDeleteExpense(context.Background(), psql.SoftDeleteExpenseParams{
+	rows, err := es.Queries.SoftDeleteExpense(context.Background(), psql.SoftDeleteExpenseParams{
 		ID:     id,
 		UserID: userID,
 	})
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrExpenseNotFound
+	}
+	return nil
 }
 
 func (es *ExpenseService) GetById(userID, id int64) (models.Expense, error) {
@@ -208,6 +224,9 @@ func (es *ExpenseService) GetById(userID, id int64) (models.Expense, error) {
 		UserID: userID,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Expense{}, ErrExpenseNotFound
+		}
 		return models.Expense{}, err
 	}
 	return es.Mapper.MapToDomain(expense)
