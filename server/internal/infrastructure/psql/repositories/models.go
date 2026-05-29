@@ -8,6 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Category struct {
+	ID        int64
+	Name      string
+	Icon      string
+	Color     string
+	Budget    pgtype.Numeric
+	Keywords  []string
+	SortOrder int32
+}
+
 type Expense struct {
 	ID                  int64
 	Name                string

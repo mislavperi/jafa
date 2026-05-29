@@ -394,6 +394,40 @@ func (q *Queries) GetFirstExpenseDate(ctx context.Context, userID int64) (interf
 	return first_date, err
 }
 
+const getMonthlySpend = `-- name: GetMonthlySpend :many
+SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+       COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+FROM expenses
+WHERE is_deleted = false AND user_id = $1
+GROUP BY date_trunc('month', created_at)
+ORDER BY date_trunc('month', created_at)
+`
+
+type GetMonthlySpendRow struct {
+	Month string
+	Total pgtype.Numeric
+}
+
+func (q *Queries) GetMonthlySpend(ctx context.Context, userID int64) ([]GetMonthlySpendRow, error) {
+	rows, err := q.db.Query(ctx, getMonthlySpend, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMonthlySpendRow
+	for rows.Next() {
+		var i GetMonthlySpendRow
+		if err := rows.Scan(&i.Month, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTagsForExpense = `-- name: GetTagsForExpense :many
 SELECT t.id, t.name, t.created_at, t.updated_at, t.is_deleted, t.user_id
 FROM tags t
@@ -503,6 +537,38 @@ func (q *Queries) GetUserPreferences(ctx context.Context, userID int64) (UserPre
 		&i.Currency,
 	)
 	return i, err
+}
+
+const listCategories = `-- name: ListCategories :many
+SELECT id, name, icon, color, budget, keywords, sort_order FROM categories ORDER BY sort_order
+`
+
+func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
+	rows, err := q.db.Query(ctx, listCategories)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Category
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Icon,
+			&i.Color,
+			&i.Budget,
+			&i.Keywords,
+			&i.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const removeTagFromExpense = `-- name: RemoveTagFromExpense :exec

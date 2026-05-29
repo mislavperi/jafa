@@ -124,3 +124,14 @@ SELECT id, username, password, avatar_url, first_name, last_name, email, created
 -- name: CreateUser :one
 INSERT INTO users (username, password, first_name, last_name, email) VALUES ($1, $2, $3, $4, $5)
 RETURNING id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at;
+
+-- name: ListCategories :many
+SELECT * FROM categories ORDER BY sort_order;
+
+-- name: GetMonthlySpend :many
+SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+       COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+FROM expenses
+WHERE is_deleted = false AND user_id = $1
+GROUP BY date_trunc('month', created_at)
+ORDER BY date_trunc('month', created_at);
