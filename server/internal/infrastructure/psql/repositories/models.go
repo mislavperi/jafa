@@ -8,6 +8,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Category struct {
+	ID        int64
+	Name      string
+	Icon      string
+	Color     string
+	Budget    pgtype.Numeric
+	Keywords  []string
+	SortOrder int32
+}
+
 type Expense struct {
 	ID                  int64
 	Name                string
@@ -64,4 +74,14 @@ type User struct {
 	FirstName string
 	LastName  string
 	Email     string
+}
+
+type UserPreference struct {
+	UserID    int64
+	AccentID  string
+	FontSize  string
+	DarkMode  bool
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	Currency  string
 }
