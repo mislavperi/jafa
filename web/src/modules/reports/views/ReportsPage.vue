@@ -4,56 +4,48 @@ import Root from '@/core/views/Root.vue'
 import AppPageHeader from '@/core/components/AppPageHeader.vue'
 import AppStatCard from '@/core/components/AppStatCard.vue'
 import Chart from 'primevue/chart'
-import { useExpenses } from '@/modules/expense/composables/useExpenses'
-import type { Expense } from '@/modules/expense/models/expense'
+import { useMonthlySpend, useCategoryBreakdown } from '@/modules/reports/composables/useReports'
+import { useThemeStore } from '@/stores/theme'
+import { currencySymbol, formatCurrency } from '@/core/currency'
 
-const { data: expenses, isLoading } = useExpenses()
+const { data: monthly, isLoading } = useMonthlySpend()
+const { data: breakdown } = useCategoryBreakdown()
+const theme = useThemeStore()
 
 function fmt(val: number) {
-  return '€' + val.toFixed(2)
+  return formatCurrency(val, theme.currency)
 }
 
-const monthlyTotals = computed(() => {
-  const map: Record<string, number> = {}
-  for (const e of expenses.value ?? []) {
-    const date = e.created_at ? new Date(e.created_at) : null
-    if (!date) continue
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    map[key] = (map[key] ?? 0) + (e.amount)
-  }
-  return map
-})
+// Backend returns months oldest-first as { month: 'YYYY-MM', total }.
+const sortedMonths = computed(() => monthly.value ?? [])
 
-const sortedMonths = computed(() => Object.keys(monthlyTotals.value).sort())
+const last12 = computed(() => sortedMonths.value.slice(-12))
 
 const thisMonthKey = computed(() => {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 })
 
-const thisMonthTotal = computed(() => monthlyTotals.value[thisMonthKey.value] ?? 0)
+const thisMonthTotal = computed(
+  () => sortedMonths.value.find((m) => m.month === thisMonthKey.value)?.total ?? 0,
+)
 
 const avg12Month = computed(() => {
-  const months = sortedMonths.value.slice(-12)
-  if (!months.length) return 0
-  const total = months.reduce((s, m) => s + (monthlyTotals.value[m] ?? 0), 0)
-  return total / months.length
+  if (!last12.value.length) return 0
+  const total = last12.value.reduce((s, m) => s + m.total, 0)
+  return total / last12.value.length
 })
 
-const highestMonth = computed(() => {
-  let max = 0
-  for (const v of Object.values(monthlyTotals.value)) {
-    if (v > max) max = v
-  }
-  return max
-})
+const highestMonth = computed(() =>
+  sortedMonths.value.reduce((max, m) => (m.total > max ? m.total : max), 0),
+)
 
 const chartData = computed(() => {
-  const labels = sortedMonths.value.slice(-12).map((k) => {
-    const [y, m] = k.split('-')
-    return new Date(Number(y), Number(m) - 1).toLocaleString('default', { month: 'short', year: '2-digit' })
+  const labels = last12.value.map((m) => {
+    const [y, mo] = m.month.split('-')
+    return new Date(Number(y), Number(mo) - 1).toLocaleString('default', { month: 'short', year: '2-digit' })
   })
-  const data = sortedMonths.value.slice(-12).map((m) => monthlyTotals.value[m] ?? 0)
+  const data = last12.value.map((m) => m.total)
   return {
     labels,
     datasets: [
@@ -69,64 +61,46 @@ const chartData = computed(() => {
   }
 })
 
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: { display: false },
-    tooltip: {
-      callbacks: {
-        label: (ctx: { parsed: { y: number } }) => '€' + ctx.parsed.y.toFixed(2),
+const chartOptions = computed(() => {
+  const symbol = currencySymbol(theme.currency)
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (ctx: { parsed: { y: number } }) => symbol + ctx.parsed.y.toFixed(2),
+        },
       },
     },
-  },
-  scales: {
-    x: {
-      ticks: { color: '#71717a' },
-      grid: { color: 'var(--jafa-border)' },
-    },
-    y: {
-      ticks: {
-        color: '#71717a',
-        callback: (v: number) => '€' + v,
+    scales: {
+      x: {
+        ticks: { color: '#71717a' },
+        grid: { color: 'var(--jafa-border)' },
       },
-      grid: { color: 'var(--jafa-border)' },
+      y: {
+        ticks: {
+          color: '#71717a',
+          callback: (v: number) => symbol + v,
+        },
+        grid: { color: 'var(--jafa-border)' },
+      },
     },
-  },
-}
-
-const CATEGORIES = [
-  { name: 'Groceries', color: '#f5c518', keywords: ['grocer', 'supermarket', 'food', 'market'] },
-  { name: 'Dining', color: '#f97316', keywords: ['restaurant', 'cafe', 'coffee', 'dining', 'eat', 'lunch', 'dinner', 'breakfast'] },
-  { name: 'Transport', color: '#3b82f6', keywords: ['uber', 'lyft', 'bus', 'train', 'transit', 'fuel', 'gas', 'transport', 'taxi'] },
-  { name: 'Bills', color: '#a855f7', keywords: ['bill', 'electric', 'water', 'internet', 'phone', 'rent', 'insurance'] },
-  { name: 'Shopping', color: '#ec4899', keywords: ['shop', 'amazon', 'clothing', 'clothes', 'shoes', 'mall'] },
-  { name: 'Entertainment', color: '#14b8a6', keywords: ['netflix', 'spotify', 'movie', 'game', 'entertain', 'stream'] },
-  { name: 'Health', color: '#ef4444', keywords: ['gym', 'health', 'pharmacy', 'doctor', 'medical', 'fitness'] },
-  { name: 'Other', color: '#71717a', keywords: [] },
-]
-
-function categorize(expense: Expense): string {
-  const name = expense.name.toLowerCase()
-  for (const cat of CATEGORIES.slice(0, -1)) {
-    if (cat.keywords.some((k) => name.includes(k))) return cat.name
   }
-  return 'Other'
-}
+})
 
+// Bar widths are scaled relative to the largest category spend — purely a
+// presentation concern; the totals themselves come from the backend.
 const categoryAverages = computed(() => {
-  const totals: Record<string, number> = {}
-  for (const e of expenses.value ?? []) {
-    const cat = categorize(e)
-    totals[cat] = (totals[cat] ?? 0) + (e.amount)
-  }
-  const maxVal = Math.max(1, ...Object.values(totals))
-  return CATEGORIES.map((c) => ({
+  const cats = (breakdown.value ?? []).filter((c) => c.spent > 0)
+  const maxVal = Math.max(1, ...cats.map((c) => c.spent))
+  return cats.map((c) => ({
     name: c.name,
     color: c.color,
-    total: totals[c.name] ?? 0,
-    pct: Math.round(((totals[c.name] ?? 0) / maxVal) * 100),
-  })).filter((c) => c.total > 0)
+    total: c.spent,
+    pct: Math.round((c.spent / maxVal) * 100),
+  }))
 })
 </script>
 

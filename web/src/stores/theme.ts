@@ -29,6 +29,7 @@ interface PrefsPayload {
   accentId: string
   fontSize: FontSize
   darkMode: boolean
+  currency: string
 }
 
 import { apiFetch } from '@/core/api'
@@ -61,6 +62,7 @@ async function savePrefs(p: PrefsPayload): Promise<void> {
 export const useThemeStore = defineStore('theme', () => {
   const accentId = ref('amber')
   const fontSize = ref<FontSize>('normal')
+  const currency = ref('EUR')
   const loaded = ref(false)
   let suppressSave = false
 
@@ -84,12 +86,17 @@ export const useThemeStore = defineStore('theme', () => {
     fontSize.value = size
   }
 
+  function setCurrency(code: string) {
+    currency.value = code
+  }
+
   async function load(isDark: boolean) {
     const prefs = await fetchPrefs()
     if (prefs) {
       suppressSave = true
       accentId.value = prefs.accentId
       fontSize.value = prefs.fontSize
+      if (prefs.currency) currency.value = prefs.currency
       suppressSave = false
     } else {
       // No prefs yet — seed defaults from current dark-mode state
@@ -103,7 +110,12 @@ export const useThemeStore = defineStore('theme', () => {
 
   function persist(darkMode: boolean) {
     if (suppressSave || !loaded.value) return
-    void savePrefs({ accentId: accentId.value, fontSize: fontSize.value, darkMode })
+    void savePrefs({
+      accentId: accentId.value,
+      fontSize: fontSize.value,
+      darkMode,
+      currency: currency.value,
+    })
   }
 
   watch([accentId, fontSize], () => {
@@ -115,9 +127,11 @@ export const useThemeStore = defineStore('theme', () => {
   return {
     accentId,
     fontSize,
+    currency,
     loaded,
     setAccent,
     setFontSize,
+    setCurrency,
     currentAccent,
     load,
     persist,

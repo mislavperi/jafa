@@ -8,6 +8,7 @@ import Button from 'primevue/button'
 import { useAuthStore } from '@/stores/auth'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useThemeStore, ACCENTS, type FontSize } from '@/stores/theme'
+import { CURRENCY_OPTIONS } from '@/core/currency'
 
 const authStore = useAuthStore()
 
@@ -26,10 +27,9 @@ const displayName = computed(() => {
   return user.value?.username ?? ''
 })
 
-const currency = ref('EUR')
 const weekStart = ref('Monday')
 
-const currencyOptions = ['EUR']
+const currencyOptions = CURRENCY_OPTIONS
 const weekOptions = ['Monday', 'Sunday', 'Saturday']
 
 const notifWeeklySummary = ref(true)
@@ -51,6 +51,11 @@ function setFontSize(size: FontSize) {
 
 function toggleDark() {
   darkMode.toggle()
+  theme.persist(darkMode.isDark)
+}
+
+function setCurrency(code: string) {
+  theme.setCurrency(code)
   theme.persist(darkMode.isDark)
 }
 
@@ -163,7 +168,12 @@ const fontSizes: { label: string; value: FontSize }[] = [
           <div class="grid grid-cols-2 gap-4">
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-medium text-[var(--jafa-text-muted)] uppercase tracking-wider">Currency</label>
-              <Select v-model="currency" :options="currencyOptions" class="w-full" disabled />
+              <Select
+                :model-value="theme.currency"
+                :options="currencyOptions"
+                class="w-full"
+                @update:model-value="setCurrency"
+              />
             </div>
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-medium text-[var(--jafa-text-muted)] uppercase tracking-wider">Week starts on</label>
