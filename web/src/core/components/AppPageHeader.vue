@@ -6,10 +6,12 @@ defineProps<{
 </script>
 
 <template>
-  <div class="flex items-center justify-between pb-3 border-b border-surface shrink-0">
+  <div class="flex items-start justify-between gap-6 shrink-0">
     <div>
-      <h1 class="text-base font-bold tracking-tight">{{ title }}</h1>
-      <p v-if="subtitle" class="text-xs text-surface-400 mt-0.5">{{ subtitle }}</p>
+      <h1 class="text-[calc(18px*var(--jafa-text-scale,1))] font-semibold tracking-tight text-[var(--jafa-text)] whitespace-nowrap">
+        {{ title }}
+      </h1>
+      <p v-if="subtitle" class="text-[calc(13px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] mt-0.5">{{ subtitle }}</p>
     </div>
     <div class="flex items-center gap-2">
       <slot />

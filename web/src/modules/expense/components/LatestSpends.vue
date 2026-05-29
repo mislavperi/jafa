@@ -7,14 +7,21 @@ import Column from 'primevue/column'
 import Chart from 'primevue/chart'
 import Select from 'primevue/select'
 import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import Dialog from 'primevue/dialog'
-import Button from 'primevue/button'
+import AddExpenseModal from './AddExpenseModal.vue'
 import type { Expense, Tag } from '../models/expense'
+import { CHART_COLORS } from '../constants'
 
-import { useExpenses, useFirstExpenseDate, useExpensesByMonth } from '../composables/useExpenses'
+import { useExpenses, useFirstExpenseDate, useExpensesByMonth, useDeleteExpense } from '../composables/useExpenses'
+import { useDarkModeStore } from '@/stores/darkMode'
+import { useThemeStore } from '@/stores/theme'
+import { currencySymbol, formatCurrency } from '@/core/currency'
+const darkMode = useDarkModeStore()
+const theme = useThemeStore()
+const cs = computed(() => currencySymbol(theme.currency))
+const money = (v: number) => formatCurrency(v, theme.currency)
+const surfaceColor = computed(() => (darkMode.isDark ? '#131316' : '#ffffff'))
 import { useAllTags } from '../composables/useTags'
 import { getTagsForExpense } from '../api/tag'
 import ExpenseTagsCell from './ExpenseTagsCell.vue'
@@ -127,25 +134,31 @@ const filteredExpenses = computed<Expense[]>(() => {
 
 const selectedRows = ref<Expense[]>([])
 
+let syncing = false
+watch(selectedRows, (rows) => {
+  if (syncing) return
+  syncing = true
+  selectedExpenseNames.value = new Set(rows.map((r) => r.name))
+  syncing = false
+})
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const editingExpense = ref<Expense | null>(null)
-const editName = ref('')
-const editAmount = ref<number>(0)
-const editCost = ref<number>(0)
+const showEditModal = ref(false)
+const { mutateAsync: deleteExpense } = useDeleteExpense()
 
 function openEdit(expense: Expense) {
   editingExpense.value = expense
-  editName.value = expense.name
-  editAmount.value = expense.amount
-  editCost.value = expense.cost ?? 0
+  showEditModal.value = true
 }
 
-function closeEdit() {
-  editingExpense.value = null
+async function removeExpense(expense: Expense) {
+  if (!confirm(`Delete "${expense.name}"?`)) return
+  await deleteExpense(expense.id)
 }
 
 // Month selector for the pie chart
@@ -197,12 +210,8 @@ const selectedExpenseNames = ref(new Set<string>())
 
 watch(searchQuery, () => {
   selectedExpenseNames.value = new Set()
+  syncRowsFromNames(new Set())
 })
-
-const COLORS = [
-  '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6',
-  '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
-]
 
 interface AggregatedExpense {
   name: string
@@ -224,43 +233,65 @@ const aggregatedExpenses = computed<AggregatedExpense[]>(() => {
   return [...map.entries()].map(([name, total], i) => ({
     name,
     total,
-    color: COLORS[i % COLORS.length]!,
+    color: CHART_COLORS[i % CHART_COLORS.length]!,
   }))
 })
 
-const chartData = computed(() => {
-  const items = aggregatedExpenses.value
-  if (!items.length) return { labels: [], datasets: [] }
+const colorByName = computed(() => {
+  const m = new Map<string, string>()
+  aggregatedExpenses.value.forEach((e) => m.set(e.name, e.color))
+  return m
+})
 
-  const hasSelection = selectedExpenseNames.value.size > 0
+const chartData = computed(() => {
+  if (!selectedExpenseNames.value.size) return { labels: [], datasets: [] }
+
+  const totals = new Map<string, number>()
+  for (const row of selectedRows.value) {
+    if (!selectedExpenseNames.value.has(row.name)) continue
+    totals.set(row.name, (totals.get(row.name) ?? 0) + row.amount)
+  }
+
+  for (const name of selectedExpenseNames.value) {
+    if (totals.has(name)) continue
+    const agg = aggregatedExpenses.value.find((a) => a.name === name)
+    if (agg) totals.set(name, agg.total)
+  }
+
+  if (!totals.size) return { labels: [], datasets: [] }
+
+  const labels = [...totals.keys()]
+  const data = labels.map((n) => totals.get(n) ?? 0)
+  const colors = labels.map((n, i) => colorByName.value.get(n) ?? CHART_COLORS[i % CHART_COLORS.length]!)
 
   return {
-    labels: items.map((e) => e.name),
+    labels,
     datasets: [
       {
-        data: items.map((e) =>
-          hasSelection && !selectedExpenseNames.value.has(e.name) ? 0 : e.total,
-        ),
-        backgroundColor: items.map((e) =>
-          hasSelection && !selectedExpenseNames.value.has(e.name)
-            ? e.color + '20'
-            : e.color,
-        ),
-        hoverBackgroundColor: items.map((e) => e.color),
+        data,
+        backgroundColor: colors,
+        hoverBackgroundColor: colors,
+        borderWidth: 2,
+        borderColor: surfaceColor.value,
       },
     ],
   }
 })
 
+const chartTotal = computed(() =>
+  chartData.value.datasets[0]?.data.reduce((s: number, n: number) => s + n, 0) ?? 0,
+)
+
 const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  cutout: '68%',
   layout: { padding: 5 },
   animation: { animateRotate: false, animateScale: false, duration: 300 },
   plugins: {
     legend: { display: false },
-    tooltip: { filter: (tooltipItem: any) => tooltipItem.raw > 0 },
+    tooltip: { callbacks: { label: (ctx: any) => ` ${money(Number(ctx.raw))}` } },
   },
-  responsive: true,
-  maintainAspectRatio: false,
   onClick: (_event: any, elements: any[]) => {
     if (!elements.length) return
     const index = elements[0].index
@@ -277,21 +308,32 @@ function toggleExpense(name: string) {
     next.add(name)
   }
   selectedExpenseNames.value = next
+  syncRowsFromNames(next)
 }
 
 function clearSelection() {
   selectedExpenseNames.value = new Set()
+  syncRowsFromNames(new Set())
+}
+
+function syncRowsFromNames(names: Set<string>) {
+  if (syncing) return
+  syncing = true
+  selectedRows.value = (filteredExpenses.value ?? []).filter((e) => names.has(e.name))
+  syncing = false
 }
 </script>
 
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
     <Panel
-      header="Recent Expenses"
-      class="h-full flex flex-col"
+      header="RECENT EXPENSES"
+      class="h-full flex flex-col bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] overflow-hidden"
       :pt="{
+        root: { class: '!bg-[var(--jafa-surface)] !border-[var(--jafa-border)]' },
+        header: { class: '!bg-[var(--jafa-surface)] !border-b !border-[var(--jafa-border)] !px-5 !py-4 [&_.p-panel-title]:!text-[calc(11px*var(--jafa-text-scale,1))] [&_.p-panel-title]:!font-semibold [&_.p-panel-title]:!uppercase [&_.p-panel-title]:!tracking-[0.06em] [&_.p-panel-title]:!text-[var(--jafa-text-muted)]' },
         toggleableContent: { class: 'flex-1 flex flex-col min-h-0' },
-        content: { class: 'flex-1 flex flex-col min-h-0 !p-0 overflow-hidden' }
+        content: { class: 'flex-1 flex flex-col min-h-0 !p-0 !bg-[var(--jafa-surface)] overflow-hidden' }
       }"
     >
       <!-- Smart search bar -->
@@ -348,7 +390,7 @@ function clearSelection() {
                 :key="tag.id"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-all border"
                 :class="selectedFilterTagIds.has(tag.id)
-                  ? 'bg-primary text-white border-primary'
+                  ? 'bg-primary text-[var(--jafa-text)] border-primary'
                   : 'bg-transparent border-surface text-surface-500 hover:border-primary/50 hover:text-primary'"
                 @mousedown.prevent="toggleFilterTag(tag.id)"
               >
@@ -398,19 +440,31 @@ function clearSelection() {
         :rows="7"
         scrollable
         scroll-height="flex"
-        :pt="{ thead: { class: 'bg-surface-50 dark:bg-surface-800' } }"
+        class="jafa-table"
+        :pt="{
+          table: { class: '!bg-[var(--jafa-surface)]' },
+          thead: { class: '!bg-[var(--jafa-surface)]' },
+          headerRow: { class: '!border-b !border-[var(--jafa-border)]' },
+          headerCell: { class: '!bg-[var(--jafa-surface)] !border-0 !text-[calc(11px*var(--jafa-text-scale,1))] !font-semibold !uppercase !tracking-[0.06em] !text-[var(--jafa-text-muted)] !px-3 !py-2.5' },
+          tbody: { class: '!bg-[var(--jafa-surface)]' },
+          bodyRow: { class: '!bg-[var(--jafa-surface)] hover:!bg-[var(--jafa-hover)] !border-0' },
+          bodyCell: { class: '!bg-transparent !border-b !border-[var(--jafa-border)] !text-[calc(13.5px*var(--jafa-text-scale,1))] !px-3 !py-3.5 !text-[var(--jafa-text)]' },
+        }"
       >
         <Column selectionMode="multiple" style="width: 2.75rem; padding-left: 1rem; padding-right: 0" />
 
-        <Column field="name" header="Name" sortable>
+        <Column field="name" header="Expense Name" sortable>
           <template #body="{ data }">
-            <span class="font-medium text-sm">{{ data.name }}</span>
-          </template>
-        </Column>
-
-        <Column field="amount" header="Amount" sortable style="width: 7rem">
-          <template #body="{ data }">
-            <span class="font-medium tabular-nums">${{ data.amount.toFixed(2) }}</span>
+            <span class="inline-flex items-center gap-2 font-medium text-[calc(13.5px*var(--jafa-text-scale,1))] text-[var(--jafa-text)]">
+              {{ data.name }}
+              <span
+                v-if="data.recurringSchedule"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--jafa-accent)]/15 text-[var(--jafa-accent)] text-[calc(10px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em]"
+              >
+                <i class="pi pi-replay text-[calc(9px*var(--jafa-text-scale,1))]" />
+                {{ data.recurringSchedule.interval }}
+              </span>
+            </span>
           </template>
         </Column>
 
@@ -420,42 +474,55 @@ function clearSelection() {
           </template>
         </Column>
 
-        <Column field="created_at" header="Date" sortable style="width: 8rem">
+        <Column field="amount" header="Amount" sortable style="width: 8rem">
           <template #body="{ data }">
-            <span class="text-surface-400 text-sm tabular-nums">{{ formatDate(data.created_at) }}</span>
+            <span class="font-semibold tabular-nums text-[var(--jafa-text)]">−{{ money(data.cost ?? data.amount) }}</span>
           </template>
         </Column>
 
-        <Column style="width: 5rem; text-align: right">
+        <Column field="created_at" header="Date" sortable style="width: 9rem">
           <template #body="{ data }">
-            <div class="flex items-center justify-end gap-0.5">
-              <Button icon="pi pi-pencil" severity="secondary" text rounded size="small" @click="openEdit(data)" />
-              <Button icon="pi pi-trash" severity="danger" text rounded size="small" />
+            <span class="text-[var(--jafa-text-muted)] text-[calc(13px*var(--jafa-text-scale,1))] tabular-nums">{{ formatDate(data.created_at) }}</span>
+          </template>
+        </Column>
+
+        <Column header="Actions" style="width: 6rem">
+          <template #header>
+            <span class="w-full text-right block">Actions</span>
+          </template>
+          <template #body="{ data }">
+            <div class="flex items-center justify-end gap-1 opacity-60 hover:opacity-100 transition">
+              <button
+                class="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--jafa-text-muted)] hover:bg-[var(--jafa-border)] hover:text-[var(--jafa-text)] transition"
+                @click="openEdit(data)"
+              >
+                <i class="pi pi-pencil text-[calc(12px*var(--jafa-text-scale,1))]" />
+              </button>
+              <button
+                class="w-7 h-7 inline-flex items-center justify-center rounded-md text-[var(--jafa-text-muted)] hover:bg-[var(--jafa-border)] hover:text-red-400 transition"
+                @click="removeExpense(data)"
+              >
+                <i class="pi pi-trash text-[calc(12px*var(--jafa-text-scale,1))]" />
+              </button>
             </div>
           </template>
         </Column>
+
+        <template #empty>
+          <div class="flex flex-col items-center gap-2 py-12 text-[var(--jafa-text-muted)]">
+            <div class="w-10 h-10 rounded-full bg-[var(--jafa-surface-3)] flex items-center justify-center">
+              <i class="pi pi-wallet text-[calc(16px*var(--jafa-text-scale,1))]" />
+            </div>
+            <div class="text-[calc(13px*var(--jafa-text-scale,1))]">No expenses to show</div>
+          </div>
+        </template>
       </DataTable>
 
-      <Dialog :visible="!!editingExpense" @update:visible="closeEdit" header="Edit Expense" modal :style="{ width: '24rem' }">
-        <div class="flex flex-col gap-4 pt-1">
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Name</label>
-            <InputText v-model="editName" class="w-full" />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Amount</label>
-            <InputNumber v-model="editAmount" :min="0" :max-fraction-digits="3" class="w-full" />
-          </div>
-          <div class="flex flex-col gap-1">
-            <label class="text-sm font-medium">Cost ($)</label>
-            <InputNumber v-model="editCost" :min="0" :min-fraction-digits="2" :max-fraction-digits="3" prefix="$" class="w-full" />
-          </div>
-        </div>
-        <template #footer>
-          <Button label="Cancel" severity="secondary" text @click="closeEdit" />
-          <Button label="Save" @click="closeEdit" />
-        </template>
-      </Dialog>
+      <AddExpenseModal
+        v-model:visible="showEditModal"
+        :expense="editingExpense"
+        @update:visible="(v: boolean) => { if (!v) editingExpense = null }"
+      />
     </Panel>
 
     <Panel
@@ -473,47 +540,59 @@ function clearSelection() {
           placeholder="Select month"
         />
       </template>
-      <div class="flex flex-col gap-3">
-        <div v-if="aggregatedExpenses.length" class="flex flex-col md:flex-row gap-3 flex-1 min-h-0">
-          <div class="relative min-w-0 h-[200px] md:h-full md:flex-1">
-            <Chart
-              type="pie"
-              :data="chartData"
-              :options="chartOptions"
-              class="absolute inset-0 w-full h-full"
-            />
-          </div>
-          <div class="flex flex-col gap-1 min-h-0 md:w-2/5 md:max-w-[250px] md:h-full md:overflow-hidden">
-            <IconField class="mb-1 shrink-0">
-              <InputIcon class="pi pi-search" />
-              <InputText
-                v-model="searchQuery"
-                placeholder="Search..."
-                class="w-full"
-                size="small"
+      <div class="flex flex-col gap-4 flex-1 min-h-0">
+        <div v-if="aggregatedExpenses.length" class="flex flex-col gap-4 flex-1 min-h-0">
+          <div class="relative h-[220px] shrink-0 flex items-center justify-center">
+            <template v-if="selectedExpenseNames.size > 0">
+              <Chart
+                type="doughnut"
+                :data="chartData"
+                :options="chartOptions"
+                class="w-full h-full"
               />
-            </IconField>
-            <div class="overflow-y-auto flex flex-col gap-0.5 min-h-0 flex-1 max-h-[150px] md:max-h-none">
-              <div
-                v-for="item in aggregatedExpenses"
-                :key="item.name"
-                class="flex items-center gap-1.5 px-2 py-1 rounded cursor-pointer transition-colors"
-                :class="[
-                  selectedExpenseNames.has(item.name)
-                    ? 'bg-primary/10 ring-1 ring-primary'
-                    : 'hover:bg-surface-100 dark:hover:bg-surface-800',
-                ]"
-                @click="toggleExpense(item.name)"
-              >
-                <span
-                  class="inline-block w-2.5 h-2.5 rounded-full shrink-0"
-                  :style="{ backgroundColor: item.color }"
-                />
-                <div class="flex flex-col min-w-0">
-                  <span class="text-xs truncate">{{ item.name }}</span>
-                  <span class="text-xs text-surface-500">${{ item.total.toFixed(2) }}</span>
-                </div>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-[calc(10px*var(--jafa-text-scale,1))] uppercase tracking-[0.14em] text-[var(--jafa-text-muted)]">Selected</span>
+                <span class="text-[calc(22px*var(--jafa-text-scale,1))] font-semibold tabular-nums text-[var(--jafa-text)] leading-tight mt-0.5">{{ money(chartTotal) }}</span>
+                <span class="text-[calc(10px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] mt-1">{{ selectedExpenseNames.size }} item{{ selectedExpenseNames.size === 1 ? '' : 's' }}</span>
               </div>
+            </template>
+            <div v-else class="text-center text-surface-400 text-sm px-4">
+              <i class="pi pi-chart-pie text-2xl mb-2 block opacity-30" />
+              Select an expense to see breakdown
+            </div>
+          </div>
+
+          <IconField class="shrink-0">
+            <InputIcon class="pi pi-search" />
+            <InputText
+              v-model="searchQuery"
+              placeholder="Search..."
+              class="w-full"
+              size="small"
+            />
+          </IconField>
+
+          <div class="flex flex-col gap-2 overflow-y-auto min-h-0 flex-1">
+            <div
+              v-for="item in aggregatedExpenses"
+              :key="item.name"
+              class="flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors"
+              :class="[
+                selectedExpenseNames.has(item.name)
+                  ? 'bg-primary/10 ring-1 ring-primary'
+                  : 'hover:bg-white/[0.025]',
+              ]"
+              @click="toggleExpense(item.name)"
+            >
+              <span
+                class="w-2.5 h-2.5 rounded-sm shrink-0"
+                :style="{ background: item.color }"
+              />
+              <span class="flex-1 text-[var(--jafa-text-muted)] text-[calc(12px*var(--jafa-text-scale,1))] truncate">{{ item.name }}</span>
+              <span class="text-[var(--jafa-text)] tabular-nums text-[calc(12px*var(--jafa-text-scale,1))] font-medium">{{ cs }}{{ item.total.toFixed(0) }}</span>
+              <span class="text-[var(--jafa-text-muted)] text-[calc(11px*var(--jafa-text-scale,1))] w-8 text-right tabular-nums">
+                {{ chartTotal && selectedExpenseNames.has(item.name) ? Math.round(item.total / chartTotal * 100) : 0 }}%
+              </span>
             </div>
           </div>
         </div>
