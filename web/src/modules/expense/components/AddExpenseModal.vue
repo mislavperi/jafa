@@ -9,6 +9,26 @@ import { getTagsForExpense } from '../api/tag'
 import type { Tag, RecurrenceInterval, RecurringSchedule, Expense } from '../models/expense'
 import { tagColor } from '../constants'
 import { useReceiptStamp } from '../composables/useReceiptStamp'
+import { useThemeStore } from '@/stores/theme'
+import { currencySymbol } from '@/core/currency'
+
+const theme = useThemeStore()
+const symbol = computed(() => currencySymbol(theme.currency))
+
+// Receipt-styled control classes expressed as Tailwind utilities (kept here so
+// the markup stays readable and the scoped <style> can stay minimal).
+const dividerClass = 'border-0 border-t-[1.5px] border-dashed border-[var(--exp-receipt-border)] my-2.5'
+const inputClass =
+  'bg-transparent border-0 border-b-[1.5px] border-dashed border-[var(--exp-receipt-border)] pt-1 px-0.5 pb-1.5 text-[13px] text-[var(--exp-receipt-text)] outline-none focus:border-b-[var(--exp-receipt-text)] placeholder:text-[color-mix(in_srgb,var(--exp-receipt-text)_40%,transparent)]'
+const stampBase =
+  'flex items-center gap-[7px] px-[9px] py-[7px] bg-[var(--exp-receipt-bg)] border-[1.5px] border-[var(--exp-receipt-border)] text-[var(--exp-receipt-text)] text-[10.5px] tracking-[0.08em] cursor-pointer text-left uppercase font-semibold transition-all duration-[120ms] hover:border-[var(--exp-receipt-text)]'
+const stampSel = 'bg-[var(--exp-receipt-text)] border-[var(--exp-receipt-text)] text-[var(--exp-receipt-bg)]'
+const freqBase =
+  'py-[7px] px-1 bg-transparent border-[1.5px] border-[var(--exp-receipt-text)] text-[var(--exp-receipt-text)] text-[9.5px] tracking-[0.14em] cursor-pointer uppercase font-bold transition-all hover:bg-[color-mix(in_srgb,var(--exp-receipt-text)_5%,transparent)]'
+const freqSel = 'bg-[var(--exp-receipt-text)] text-[var(--exp-receipt-bg)]'
+const recurringOnClass = 'bg-[color-mix(in_srgb,var(--jafa-accent)_8%,transparent)] border-[var(--jafa-accent)] border-solid'
+const tenderClass =
+  'bg-[var(--exp-receipt-text)] text-[var(--exp-receipt-bg)] border-0 cursor-pointer enabled:hover:opacity-85 disabled:bg-[var(--exp-receipt-border)]'
 
 const props = defineProps<{ visible: boolean; expense?: Expense | null }>()
 const emit = defineEmits<{ 'update:visible': [value: boolean] }>()
@@ -216,7 +236,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
         </div>
       </div>
 
-      <hr class="exp-divider" />
+      <hr :class="dividerClass" />
 
       <div class="text-center my-1">
         <div class="text-[17px] font-extrabold tracking-[0.08em] uppercase">
@@ -227,7 +247,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
         </div>
       </div>
 
-      <hr class="exp-divider" />
+      <hr :class="dividerClass" />
 
       <!-- Item Description -->
       <div class="mb-3">
@@ -239,7 +259,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
           v-model="name"
           type="text"
           placeholder="e.g. Weekly groceries"
-          class="exp-input w-full"
+          :class="inputClass" class="w-full"
           autofocus
         />
       </div>
@@ -249,17 +269,17 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
         <div>
           <label class="flex justify-between items-baseline text-[10px] tracking-[0.16em] uppercase opacity-70 mb-1">
             <span>Unit Price</span>
-            <span class="font-bold">EUR</span>
+            <span class="font-bold">{{ theme.currency }}</span>
           </label>
           <div class="relative">
-            <span class="absolute left-0 bottom-1.5 font-bold text-[14px]">€</span>
+            <span class="absolute left-0 bottom-1.5 font-bold text-[14px]">{{ symbol }}</span>
             <input
               v-model="cost"
               type="number"
               step="0.01"
               min="0"
               placeholder="0.00"
-              class="exp-input w-full !pl-4 tabular-nums"
+              :class="inputClass" class="w-full !pl-4 tabular-nums"
             />
           </div>
         </div>
@@ -268,7 +288,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
             <span>Date Stamped</span>
             <span class="font-bold">{{ displayDate }}</span>
           </label>
-          <input v-model="date" type="date" class="exp-input w-full" />
+          <input v-model="date" type="date" :class="inputClass" class="w-full" />
         </div>
       </div>
 
@@ -280,7 +300,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
         </label>
         <button
           type="button"
-          class="exp-stamp-trigger w-full flex items-center gap-2.5 px-3 py-2 border-[1.5px] border-current bg-transparent font-mono text-[12px] tracking-[0.06em] uppercase font-bold cursor-pointer hover:bg-[var(--exp-receipt-text)]/[0.04]"
+          class="w-full flex items-center gap-2.5 px-3 py-2 border-[1.5px] border-current bg-transparent font-mono text-[12px] tracking-[0.06em] uppercase font-bold cursor-pointer hover:bg-[var(--exp-receipt-text)]/[0.04]"
           @click="tagsOpen = !tagsOpen"
         >
           <span
@@ -298,8 +318,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
               v-for="t in tagList"
               :key="t.id"
               type="button"
-              class="exp-stamp"
-              :class="{ sel: selectedTagIds.has(t.id) }"
+              :class="[stampBase, selectedTagIds.has(t.id) ? stampSel : '']"
               @click="toggleTag(t.id)"
             >
               <span class="w-2 h-2 rounded-[2px] shrink-0" :style="{ background: tagColor(t.id) }" />
@@ -318,7 +337,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
             />
             <button
               type="button"
-              class="exp-add-tag px-3 text-[10px] tracking-[0.14em] uppercase font-bold cursor-pointer border-[1.5px] border-current bg-transparent hover:bg-[var(--exp-receipt-text)] hover:text-[var(--exp-receipt-bg)] transition disabled:opacity-40 disabled:cursor-not-allowed"
+              class="px-3 text-[10px] tracking-[0.14em] uppercase font-bold cursor-pointer border-[1.5px] border-current bg-transparent hover:bg-[var(--exp-receipt-text)] hover:text-[var(--exp-receipt-bg)] transition disabled:opacity-40 disabled:cursor-not-allowed"
               :disabled="!newTagName.trim()"
               @click="handleCreateTag"
             >
@@ -328,12 +347,12 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
         </div>
       </div>
 
-      <hr class="exp-divider" />
+      <hr :class="dividerClass" />
 
       <!-- Recurring -->
       <div
-        class="exp-recurring p-3.5 border-[1.5px] transition"
-        :class="recurring ? 'exp-recurring-on border-solid' : 'border-dashed border-[var(--exp-receipt-border)] bg-[var(--exp-receipt-text)]/[0.025]'"
+        class="p-3.5 border-[1.5px] transition"
+        :class="recurring ? recurringOnClass : 'border-dashed border-[var(--exp-receipt-border)] bg-[var(--exp-receipt-text)]/[0.025]'"
       >
         <label class="flex items-center justify-between gap-3 cursor-pointer select-none">
           <div class="flex flex-col gap-0.5">
@@ -359,31 +378,30 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
               v-for="f in FREQ_OPTIONS"
               :key="f.value"
               type="button"
-              class="exp-freq-stamp"
-              :class="{ sel: frequency === f.value }"
+              :class="[freqBase, frequency === f.value ? freqSel : '']"
               @click="frequency = f.value"
             >
               {{ f.label }}
             </button>
           </div>
           <label class="block text-[10px] tracking-[0.16em] uppercase opacity-70 mb-1">Day of Month</label>
-          <select v-model.number="recurrenceDay" class="exp-input w-full font-mono">
+          <select v-model.number="recurrenceDay" :class="inputClass" class="w-full font-mono">
             <option v-for="d in dayOptions" :key="d" :value="d">{{ d }}</option>
           </select>
         </div>
       </div>
 
-      <hr class="exp-divider" />
+      <hr :class="dividerClass" />
 
       <!-- Subtotal lines -->
       <div class="flex flex-col">
         <div class="flex justify-between items-baseline gap-4 py-0.5 text-[12px]">
           <span class="text-[10.5px] tracking-[0.14em] uppercase opacity-60">Subtotal</span>
-          <span class="font-semibold tabular-nums">€{{ costNum.toFixed(2) }}</span>
+          <span class="font-semibold tabular-nums">{{ symbol }}{{ costNum.toFixed(2) }}</span>
         </div>
         <div class="flex justify-between items-baseline gap-4 py-0.5 text-[12px]">
           <span class="text-[10.5px] tracking-[0.14em] uppercase opacity-60">Category Tax</span>
-          <span class="font-semibold tabular-nums">€0.00</span>
+          <span class="font-semibold tabular-nums">{{ symbol }}0.00</span>
         </div>
         <div class="flex justify-between items-baseline gap-4 py-0.5 text-[12px]">
           <span class="text-[10.5px] tracking-[0.14em] uppercase opacity-60">Schedule</span>
@@ -391,12 +409,12 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
         </div>
       </div>
 
-      <hr class="exp-divider" />
+      <hr :class="dividerClass" />
 
       <!-- TOTAL -->
       <div class="flex justify-between items-center gap-3 py-1 text-[16px] font-extrabold tracking-[0.04em]">
         <span>TOTAL</span>
-        <span class="tabular-nums">€{{ costNum.toFixed(2) }}</span>
+        <span class="tabular-nums">{{ symbol }}{{ costNum.toFixed(2) }}</span>
       </div>
 
       <Message v-if="fieldError" severity="error" :closable="false" class="!mt-2">{{ fieldError }}</Message>
@@ -405,7 +423,8 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
       <button
         type="submit"
         :disabled="isPending"
-        class="exp-tender w-full mt-3 flex items-center justify-center gap-1.5 py-3 px-4 font-bold text-[13px] tracking-[0.18em] uppercase transition disabled:cursor-not-allowed"
+        :class="tenderClass"
+        class="w-full mt-3 flex items-center justify-center gap-1.5 py-3 px-4 font-bold text-[13px] tracking-[0.18em] uppercase transition disabled:cursor-not-allowed"
       >
         <span v-if="isPending">PROCESSING…</span>
         <template v-else>
@@ -416,13 +435,13 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
 
       <button
         type="button"
-        class="exp-void w-full mt-1.5 py-2 text-[10.5px] tracking-[0.18em] uppercase font-semibold opacity-70 hover:opacity-100 hover:text-[var(--jafa-accent)] transition cursor-pointer"
+        class="w-full mt-1.5 py-2 text-[10.5px] tracking-[0.18em] uppercase font-semibold opacity-70 hover:opacity-100 hover:text-[var(--jafa-accent)] transition cursor-pointer"
         @click="close"
       >
         ✕ Void transaction
       </button>
 
-      <hr class="exp-divider mt-4" />
+      <hr :class="dividerClass" class="mt-4" />
 
       <div class="text-center text-[11px] tracking-[0.16em] uppercase font-bold">
         ★ Thank you for tracking ★
@@ -447,6 +466,12 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
 </template>
 
 <style scoped>
+/*
+ * The only rule kept in CSS: the "thermal paper" treatment for the receipt
+ * (dotted texture + layered shadow). Everything else is Tailwind. This is hard
+ * to express cleanly as utilities because of the multi-layer background-image
+ * and color-mix dotting, so it stays here intentionally.
+ */
 .exp-receipt {
   background: var(--exp-receipt-bg);
   color: var(--exp-receipt-text);
@@ -458,94 +483,5 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
     radial-gradient(color-mix(in srgb, var(--exp-receipt-text) 4%, transparent) 1px, transparent 1px);
   background-size: 3px 3px, 7px 7px;
   background-position: 0 0, 1.5px 1.5px;
-}
-
-.exp-divider {
-  border: none;
-  border-top: 1.5px dashed var(--exp-receipt-border);
-  margin: 10px 0;
-}
-
-.exp-input {
-  background: transparent;
-  border: none;
-  border-bottom: 1.5px dashed var(--exp-receipt-border);
-  padding: 4px 2px 6px;
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--exp-receipt-text);
-  outline: none;
-}
-.exp-input:focus {
-  border-bottom-color: var(--exp-receipt-text);
-}
-.exp-input::placeholder {
-  color: color-mix(in srgb, var(--exp-receipt-text) 40%, transparent);
-}
-
-.exp-stamp {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 9px;
-  background: var(--exp-receipt-bg);
-  border: 1.5px solid var(--exp-receipt-border);
-  color: var(--exp-receipt-text);
-  font-family: inherit;
-  font-size: 10.5px;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  text-align: left;
-  text-transform: uppercase;
-  font-weight: 600;
-  transition: all 0.12s;
-}
-.exp-stamp:hover {
-  border-color: var(--exp-receipt-text);
-}
-.exp-stamp.sel {
-  background: var(--exp-receipt-text);
-  border-color: var(--exp-receipt-text);
-  color: var(--exp-receipt-bg);
-}
-
-.exp-freq-stamp {
-  padding: 7px 4px;
-  background: transparent;
-  border: 1.5px solid var(--exp-receipt-text);
-  color: var(--exp-receipt-text);
-  font-family: inherit;
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
-  cursor: pointer;
-  text-transform: uppercase;
-  font-weight: 700;
-  transition: all 0.1s;
-}
-.exp-freq-stamp:hover {
-  background: color-mix(in srgb, var(--exp-receipt-text) 5%, transparent);
-}
-.exp-freq-stamp.sel {
-  background: var(--exp-receipt-text);
-  color: var(--exp-receipt-bg);
-}
-
-.exp-recurring-on {
-  background: color-mix(in srgb, var(--jafa-accent) 8%, transparent) !important;
-  border-color: var(--jafa-accent) !important;
-}
-
-.exp-tender {
-  background: var(--exp-receipt-text);
-  color: var(--exp-receipt-bg);
-  border: none;
-  font-family: inherit;
-  cursor: pointer;
-}
-.exp-tender:hover:not(:disabled) {
-  opacity: 0.85;
-}
-.exp-tender:disabled {
-  background: var(--exp-receipt-border);
 }
 </style>
