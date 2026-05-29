@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
+import { Form, FormField } from '@primevue/forms'
 import { useCreateExpense, useUpdateExpense } from '../composables/useExpenses'
 import { useAllTags, useCreateTag, useAddTagToExpense, useRemoveTagFromExpense } from '../composables/useTags'
 import { getTagsForExpense } from '../api/tag'
@@ -45,7 +46,6 @@ const recurring = ref(false)
 const frequency = ref<RecurrenceInterval>('monthly')
 const recurrenceDay = ref<number>(new Date().getDate())
 const submitError = ref<string | null>(null)
-const fieldError = ref<string | null>(null)
 const tagsOpen = ref(false)
 
 const { mutateAsync: createExpense, isPending: creating } = useCreateExpense()
@@ -143,7 +143,6 @@ function reset() {
   frequency.value = 'monthly'
   recurrenceDay.value = new Date().getDate()
   submitError.value = null
-  fieldError.value = null
   tagsOpen.value = false
 }
 
@@ -152,17 +151,18 @@ function close() {
   emit('update:visible', false)
 }
 
-async function submit() {
+// PrimeVue Forms resolver. It validates the receipt fields (name, cost) and
+// maps messages back onto the matching FormField via its error key.
+function resolver() {
+  const errors: Record<string, { message: string }[]> = {}
+  if (!name.value.trim()) errors.name = [{ message: 'Name required' }]
+  if (isNaN(costNum.value) || costNum.value <= 0) errors.cost = [{ message: 'Cost required' }]
+  return { values: { name: name.value, cost: cost.value }, errors }
+}
+
+async function handleSubmit({ valid }: { valid: boolean }) {
   submitError.value = null
-  fieldError.value = null
-  if (!name.value.trim()) {
-    fieldError.value = 'Name required'
-    return
-  }
-  if (isNaN(costNum.value) || costNum.value <= 0) {
-    fieldError.value = 'Cost required'
-    return
-  }
+  if (!valid) return
   try {
     let recurringSchedule: RecurringSchedule | undefined
     if (recurring.value) {
@@ -207,10 +207,10 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
     content-class="!p-0 !bg-transparent"
     :pt="{ root: { class: '!shadow-none !bg-transparent !border-0' }, mask: { class: '!bg-black/70 backdrop-blur-[2px]' } }"
   >
-    <form
+    <Form
+      :resolver="resolver"
       class="exp-receipt relative w-full font-mono px-7 pt-9 pb-6"
-      @submit.prevent="submit"
-      @click.stop
+      @submit="handleSubmit"
     >
       <button
         type="button"
@@ -250,7 +250,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
       <hr :class="dividerClass" />
 
       <!-- Item Description -->
-      <div class="mb-3">
+      <FormField v-slot="$field" name="name" class="mb-3 block">
         <label class="flex justify-between items-baseline text-[10px] tracking-[0.16em] uppercase opacity-70 mb-1">
           <span>1× Item Description</span>
           <span class="font-bold">REQUIRED</span>
@@ -262,11 +262,14 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
           :class="inputClass" class="w-full"
           autofocus
         />
-      </div>
+        <div v-if="$field.invalid" class="mt-1 text-[11px] text-red-500 font-medium">
+          {{ $field.error?.message }}
+        </div>
+      </FormField>
 
       <!-- Unit Price + Date -->
       <div class="grid grid-cols-2 gap-4 mb-3">
-        <div>
+        <FormField v-slot="$field" name="cost" class="block">
           <label class="flex justify-between items-baseline text-[10px] tracking-[0.16em] uppercase opacity-70 mb-1">
             <span>Unit Price</span>
             <span class="font-bold">{{ theme.currency }}</span>
@@ -282,7 +285,10 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
               :class="inputClass" class="w-full !pl-4 tabular-nums"
             />
           </div>
-        </div>
+          <div v-if="$field.invalid" class="mt-1 text-[11px] text-red-500 font-medium">
+            {{ $field.error?.message }}
+          </div>
+        </FormField>
         <div>
           <label class="flex justify-between items-baseline text-[10px] tracking-[0.16em] uppercase opacity-70 mb-1">
             <span>Date Stamped</span>
@@ -417,7 +423,6 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
         <span class="tabular-nums">{{ symbol }}{{ costNum.toFixed(2) }}</span>
       </div>
 
-      <Message v-if="fieldError" severity="error" :closable="false" class="!mt-2">{{ fieldError }}</Message>
       <Message v-if="submitError" severity="error" :closable="false" class="!mt-2">{{ submitError }}</Message>
 
       <button
@@ -461,7 +466,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
       <div class="text-center text-[10.5px] tracking-[0.3em] opacity-70">
         JAFA · {{ departmentCode }} · {{ txnId.split('-')[1] }}
       </div>
-    </form>
+    </Form>
   </Dialog>
 </template>
 
