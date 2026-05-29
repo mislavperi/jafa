@@ -4,8 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/server/internal/server/httperr"
+	"github.com/mislavperi/jafa/server/internal/domain/models"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
+	"github.com/mislavperi/jafa/server/internal/server/httperr"
 )
 
 type PreferencesController struct {
@@ -48,7 +49,7 @@ func (pc *PreferencesController) Upsert() gin.HandlerFunc {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
-		prefs, err := pc.preferencesService.Upsert(services.UpsertPreferencesInput{
+		prefs, err := pc.preferencesService.Upsert(models.UpsertPreferencesInput{
 			UserID:   uid,
 			AccentID: req.AccentID,
 			FontSize: req.FontSize,

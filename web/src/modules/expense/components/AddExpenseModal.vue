@@ -7,13 +7,13 @@ import { useCreateExpense, useUpdateExpense } from '../composables/useExpenses'
 import { useAllTags, useCreateTag, useAddTagToExpense, useRemoveTagFromExpense } from '../composables/useTags'
 import { getTagsForExpense } from '../api/tag'
 import type { Tag, RecurrenceInterval, RecurringSchedule, Expense } from '../models/expense'
+import { tagColor } from '../constants'
+import { useReceiptStamp } from '../composables/useReceiptStamp'
 
 const props = defineProps<{ visible: boolean; expense?: Expense | null }>()
 const emit = defineEmits<{ 'update:visible': [value: boolean] }>()
 
 const editing = computed(() => !!props.expense)
-
-const TAG_COLORS = ['#f5c518', '#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6', '#ef4444']
 
 const name = ref('')
 const cost = ref<string>('')
@@ -37,10 +37,6 @@ const { mutateAsync: addTag } = useAddTagToExpense()
 const { mutateAsync: removeTag } = useRemoveTagFromExpense()
 
 const tagList = computed<Tag[]>(() => allTags.value ?? [])
-
-function colorFor(id: number) {
-  return TAG_COLORS[id % TAG_COLORS.length]
-}
 
 const selectedTags = computed<Tag[]>(() =>
   tagList.value.filter((t) => selectedTagIds.value.has(t.id)),
@@ -70,35 +66,14 @@ const displayDate = computed(() => {
   return `${m}/${d}/${y?.slice(2) ?? ''}`
 })
 
-// Stable txn id per modal session
-const txnId = ref('TXN-' + Math.random().toString(36).slice(2, 8).toUpperCase())
-
-const stampDate = ref('')
-const stampTime = ref('')
-function refreshStamps() {
-  const n = new Date()
-  stampDate.value = n.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })
-  stampTime.value = n.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-}
-refreshStamps()
-
-const barcodeBars = computed(() => {
-  const arr: number[] = []
-  let seed = 23
-  for (let i = 0; i < 48; i++) {
-    seed = (seed * 9301 + 49297) % 233280
-    const r = seed / 233280
-    arr.push(r < 0.5 ? 1 : r < 0.85 ? 2 : 3)
-  }
-  return arr
-})
+// Decorative receipt chrome (txn id, date/time stamp, barcode).
+const { txnId, stampDate, stampTime, newSession, barcodeBars } = useReceiptStamp(23)
 
 watch(
   () => props.visible,
   async (v) => {
     if (!v) return
-    refreshStamps()
-    txnId.value = 'TXN-' + Math.random().toString(36).slice(2, 8).toUpperCase()
+    newSession()
     if (props.expense) {
       name.value = props.expense.name
       cost.value = String(props.expense.cost ?? '')
@@ -311,7 +286,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
           <span
             v-if="selectedTags.length"
             class="w-2.5 h-2.5 rounded-[2px] shrink-0"
-            :style="{ background: colorFor(selectedTags[0]!.id) }"
+            :style="{ background: tagColor(selectedTags[0]!.id) }"
           />
           <span class="flex-1 text-left truncate">{{ departmentLabel }}</span>
           <span class="text-[11px] opacity-70">{{ tagsOpen ? '▴' : '▾' }}</span>
@@ -327,7 +302,7 @@ const dayOptions = Array.from({ length: 28 }, (_, i) => i + 1)
               :class="{ sel: selectedTagIds.has(t.id) }"
               @click="toggleTag(t.id)"
             >
-              <span class="w-2 h-2 rounded-[2px] shrink-0" :style="{ background: colorFor(t.id) }" />
+              <span class="w-2 h-2 rounded-[2px] shrink-0" :style="{ background: tagColor(t.id) }" />
               <span class="truncate">{{ t.name }}</span>
             </button>
           </div>

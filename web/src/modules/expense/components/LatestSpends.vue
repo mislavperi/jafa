@@ -11,6 +11,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import AddExpenseModal from './AddExpenseModal.vue'
 import type { Expense, Tag } from '../models/expense'
+import { CHART_COLORS } from '../constants'
 
 import { useExpenses, useFirstExpenseDate, useExpensesByMonth, useDeleteExpense } from '../composables/useExpenses'
 import { useDarkModeStore } from '@/stores/darkMode'
@@ -207,8 +208,6 @@ watch(searchQuery, () => {
   syncRowsFromNames(new Set())
 })
 
-const COLORS = ['#f5c518','#f97316','#3b82f6','#a855f7','#ec4899','#14b8a6','#ef4444','#71717a']
-
 interface AggregatedExpense {
   name: string
   total: number
@@ -229,7 +228,7 @@ const aggregatedExpenses = computed<AggregatedExpense[]>(() => {
   return [...map.entries()].map(([name, total], i) => ({
     name,
     total,
-    color: COLORS[i % COLORS.length]!,
+    color: CHART_COLORS[i % CHART_COLORS.length]!,
   }))
 })
 
@@ -258,7 +257,7 @@ const chartData = computed(() => {
 
   const labels = [...totals.keys()]
   const data = labels.map((n) => totals.get(n) ?? 0)
-  const colors = labels.map((n, i) => colorByName.value.get(n) ?? COLORS[i % COLORS.length]!)
+  const colors = labels.map((n, i) => colorByName.value.get(n) ?? CHART_COLORS[i % CHART_COLORS.length]!)
 
   return {
     labels,

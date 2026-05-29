@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toRef, computed } from 'vue'
 import { useExpenseTags } from '../composables/useTags'
+import { tagColor } from '../constants'
 
 const props = defineProps<{ expenseId: number }>()
 const { data: rawTags, isLoading } = useExpenseTags(toRef(props, 'expenseId'))
@@ -9,12 +10,6 @@ const tags = computed(() => {
   const seen = new Set<number>()
   return rawTags.value.filter((t) => { if (seen.has(t.id)) return false; seen.add(t.id); return true })
 })
-
-const TAG_COLORS = ['#f5c518', '#f97316', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6', '#ef4444']
-
-function tagColor(tagId: number) {
-  return TAG_COLORS[tagId % TAG_COLORS.length]!
-}
 </script>
 
 <template>

@@ -1,7 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-
-const STORAGE_KEY = 'darkMode'
+import { DARK_MODE_STORAGE_KEY as STORAGE_KEY } from '@/core/constants/storage'
 
 export const useDarkModeStore = defineStore('darkMode', () => {
   const stored = localStorage.getItem(STORAGE_KEY)

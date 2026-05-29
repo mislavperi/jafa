@@ -13,6 +13,8 @@ async function bounceToLogin() {
     // pinia not yet ready — best-effort
   }
   if (router.currentRoute.value.name !== 'login') {
+    // Fire-and-forget: we don't await the navigation here, and `void` marks it
+    // as intentionally un-awaited so it doesn't trip no-floating-promises.
     void router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
   }
 }

@@ -13,23 +13,11 @@ const ContextUserIDKey = "user_id"
 func RequireAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		session := sessions.Default(ctx)
-		userID := session.Get(SessionUserIDKey)
-		if userID == nil {
+		// The session only ever stores user.Id (int64), so a direct type
+		// assertion is enough — no need to handle other numeric types.
+		id, ok := session.Get(SessionUserIDKey).(int64)
+		if !ok {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
-			return
-		}
-		var id int64
-		switch v := userID.(type) {
-		case int64:
-			id = v
-		case int:
-			id = int64(v)
-		case int32:
-			id = int64(v)
-		case float64:
-			id = int64(v)
-		default:
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid session"})
 			return
 		}
 		ctx.Set(ContextUserIDKey, id)

@@ -48,14 +48,7 @@ func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) 
 	}, nil
 }
 
-type UpsertPreferencesInput struct {
-	UserID   int64
-	AccentID string
-	FontSize string
-	DarkMode bool
-}
-
-func (ps *PreferencesService) Upsert(input UpsertPreferencesInput) (models.UserPreferences, error) {
+func (ps *PreferencesService) Upsert(input models.UpsertPreferencesInput) (models.UserPreferences, error) {
 	row, err := ps.Queries.UpsertUserPreferences(context.Background(), psql.UpsertUserPreferencesParams{
 		UserID:   input.UserID,
 		AccentID: input.AccentID,
