@@ -33,27 +33,25 @@ UPDATE tags SET user_id = (SELECT id FROM users ORDER BY id LIMIT 1) WHERE user_
 DELETE FROM expenses WHERE user_id IS NULL;
 DELETE FROM tags WHERE user_id IS NULL;
 
--- Deduplicate tags per (user_id, name). Repoint expenses_tags to surviving tag id, drop dupes.
+-- Deduplicate tags per (user_id, name). Repoint expenses_tags to the surviving
+-- (keeper) tag id, then drop the duplicate tags and their links below.
+--
+-- Insert the keeper links (deduped via DISTINCT + ON CONFLICT) rather than
+-- UPDATE-ing the duplicate links in place. An in-place UPDATE evaluates its
+-- guard against the pre-update snapshot, so two duplicate tags on the same
+-- expense would both collapse onto (expense_id, keeper_id) in one statement and
+-- violate the expenses_tags (expense_id, tag_id) primary key.
 WITH ranked AS (
     SELECT id,
-           user_id,
-           name,
            MIN(id) OVER (PARTITION BY user_id, name) AS keeper_id
     FROM tags
-),
-remap AS (
-    SELECT id AS dup_id, keeper_id
-    FROM ranked
-    WHERE id <> keeper_id
 )
-UPDATE expenses_tags et
-SET tag_id = r.keeper_id
-FROM remap r
-WHERE et.tag_id = r.dup_id
-  AND NOT EXISTS (
-      SELECT 1 FROM expenses_tags et2
-      WHERE et2.expense_id = et.expense_id AND et2.tag_id = r.keeper_id
-  );
+INSERT INTO expenses_tags (expense_id, tag_id)
+SELECT DISTINCT et.expense_id, r.keeper_id
+FROM expenses_tags et
+JOIN ranked r ON r.id = et.tag_id
+WHERE r.id <> r.keeper_id
+ON CONFLICT DO NOTHING;
 
 WITH dupes AS (
     SELECT id FROM (
