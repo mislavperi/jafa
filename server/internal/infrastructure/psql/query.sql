@@ -104,9 +104,34 @@ WHERE is_deleted = false
 GROUP BY created_at::date
 ORDER BY day;
 
+-- name: GetUserPreferences :one
+SELECT * FROM user_preferences WHERE user_id = $1 LIMIT 1;
+
+-- name: UpsertUserPreferences :one
+INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode, currency)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (user_id) DO UPDATE
+  SET accent_id = EXCLUDED.accent_id,
+      font_size = EXCLUDED.font_size,
+      dark_mode = EXCLUDED.dark_mode,
+      currency = EXCLUDED.currency,
+      updated_at = NOW()
+RETURNING *;
+
 -- name: GetUserByUsername :one
 SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 LIMIT 1;
 
 -- name: CreateUser :one
 INSERT INTO users (username, password, first_name, last_name, email) VALUES ($1, $2, $3, $4, $5)
 RETURNING id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at;
+
+-- name: ListCategories :many
+SELECT * FROM categories ORDER BY sort_order;
+
+-- name: GetMonthlySpend :many
+SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+       COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+FROM expenses
+WHERE is_deleted = false AND user_id = $1
+GROUP BY date_trunc('month', created_at)
+ORDER BY date_trunc('month', created_at);

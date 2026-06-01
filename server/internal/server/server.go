@@ -19,13 +19,13 @@ type Server struct {
 	port uint
 }
 
-func NewServer(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController, port uint) *Server {
+func NewServer(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController, preferencesController *controllers.PreferencesController, categoryController *controllers.CategoryController, reportController *controllers.ReportController, port uint) *Server {
 	server := &Server{
 		Gin:  gin.Default(),
 		port: port,
 	}
 
-	server.registerRoutes(expenseController, tagController, authController)
+	server.registerRoutes(expenseController, tagController, authController, preferencesController, categoryController, reportController)
 	return server
 }
 
@@ -52,7 +52,7 @@ func sessionSecret() []byte {
 	return []byte(secret)
 }
 
-func (s *Server) registerRoutes(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController) {
+func (s *Server) registerRoutes(expenseController *controllers.ExpenseController, tagController *controllers.TagController, authController *controllers.AuthController, preferencesController *controllers.PreferencesController, categoryController *controllers.CategoryController, reportController *controllers.ReportController) {
 	store := cookie.NewStore(sessionSecret())
 	store.Options(sessions.Options{
 		Path:     "/",
@@ -97,4 +97,15 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	tagGroup := protected.Group("/tags")
 	tagGroup.GET("/", tagController.GetAllTags())
 	tagGroup.POST("/", tagController.CreateTag())
+
+	prefsGroup := protected.Group("/preferences")
+	prefsGroup.GET("", preferencesController.Get())
+	prefsGroup.PUT("", preferencesController.Upsert())
+
+	categoryGroup := protected.Group("/categories")
+	categoryGroup.GET("", categoryController.List())
+
+	reportGroup := protected.Group("/reports")
+	reportGroup.GET("/category-breakdown", reportController.CategoryBreakdown())
+	reportGroup.GET("/monthly-spend", reportController.MonthlySpend())
 }

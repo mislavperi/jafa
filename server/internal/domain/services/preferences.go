@@ -1,0 +1,60 @@
+package services
+
+import (
+	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/mislavperi/jafa/server/internal/domain/models"
+	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
+	"github.com/mislavperi/jafa/server/utils"
+)
+
+type PreferencesService struct {
+	Queries *psql.Queries
+}
+
+func NewPreferencesService(queries *psql.Queries) *PreferencesService {
+	return &PreferencesService{Queries: queries}
+}
+
+func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) {
+	row, err := ps.Queries.GetUserPreferences(context.Background(), userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.DefaultPreferences(userID), nil
+		}
+		return models.UserPreferences{}, err
+	}
+	return models.UserPreferences{
+		UserID:    row.UserID,
+		AccentID:  row.AccentID,
+		FontSize:  row.FontSize,
+		DarkMode:  row.DarkMode,
+		Currency:  row.Currency,
+		CreatedAt: utils.FormatRFC3339(row.CreatedAt),
+		UpdatedAt: utils.FormatRFC3339(row.UpdatedAt),
+	}, nil
+}
+
+func (ps *PreferencesService) Upsert(input models.UpsertPreferencesInput) (models.UserPreferences, error) {
+	row, err := ps.Queries.UpsertUserPreferences(context.Background(), psql.UpsertUserPreferencesParams{
+		UserID:   input.UserID,
+		AccentID: input.AccentID,
+		FontSize: input.FontSize,
+		DarkMode: input.DarkMode,
+		Currency: input.Currency,
+	})
+	if err != nil {
+		return models.UserPreferences{}, err
+	}
+	return models.UserPreferences{
+		UserID:    row.UserID,
+		AccentID:  row.AccentID,
+		FontSize:  row.FontSize,
+		DarkMode:  row.DarkMode,
+		Currency:  row.Currency,
+		CreatedAt: utils.FormatRFC3339(row.CreatedAt),
+		UpdatedAt: utils.FormatRFC3339(row.UpdatedAt),
+	}, nil
+}

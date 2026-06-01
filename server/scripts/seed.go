@@ -249,5 +249,36 @@ func main() {
 	}
 	fmt.Printf("successfully seeded %d expenses_tags\n", len(expenseIDs))
 
+	// Seed categories (reference/test data for the category-breakdown report).
+	type categorySeed struct {
+		name      string
+		icon      string
+		color     string
+		budget    float64
+		keywords  []string
+		sortOrder int
+	}
+	categorySeeds := []categorySeed{
+		{"Groceries", "pi pi-shopping-cart", "#f5c518", 400, []string{"grocer", "supermarket", "food", "market"}, 1},
+		{"Dining", "pi pi-utensils", "#f97316", 300, []string{"restaurant", "cafe", "coffee", "dining", "eat", "lunch", "dinner", "breakfast"}, 2},
+		{"Transport", "pi pi-car", "#3b82f6", 200, []string{"uber", "lyft", "bus", "train", "transit", "fuel", "gas", "transport", "taxi"}, 3},
+		{"Bills", "pi pi-file-edit", "#a855f7", 500, []string{"bill", "electric", "water", "internet", "phone", "rent", "insurance"}, 4},
+		{"Shopping", "pi pi-tag", "#ec4899", 250, []string{"shop", "amazon", "clothing", "clothes", "shoes", "mall"}, 5},
+		{"Entertainment", "pi pi-star", "#14b8a6", 150, []string{"netflix", "spotify", "movie", "game", "entertain", "stream"}, 6},
+		{"Health", "pi pi-heart", "#ef4444", 100, []string{"gym", "health", "pharmacy", "doctor", "medical", "fitness"}, 7},
+		{"Other", "pi pi-ellipsis-h", "#71717a", 200, []string{}, 8},
+	}
+	for _, c := range categorySeeds {
+		_, err := pool.Exec(
+			ctx,
+			"INSERT INTO categories (name, icon, color, budget, keywords, sort_order) VALUES ($1, $2, $3, $4, $5, $6)",
+			c.name, c.icon, c.color, c.budget, c.keywords, c.sortOrder,
+		)
+		if err != nil {
+			log.Fatalf("failed to insert category: %v", err)
+		}
+	}
+	fmt.Printf("successfully seeded %d categories\n", len(categorySeeds))
+
 	fmt.Println("seeding complete!")
 }

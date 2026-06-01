@@ -1,19 +1,10 @@
 package mappers
 
 import (
-	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
+	"github.com/mislavperi/jafa/server/utils"
 )
-
-func formatTime(t pgtype.Timestamptz) string {
-	if !t.Valid {
-		return ""
-	}
-	return t.Time.UTC().Format(time.RFC3339)
-}
 
 type ExpenseMapper struct {
 }
@@ -46,8 +37,8 @@ func (em *ExpenseMapper) MapToDomain(expense psql.Expense) (models.Expense, erro
 		Cost:              float32(cost.Float64),
 		ItemID:            expense.ItemID.Int64,
 		IsDeleted:         expense.IsDeleted,
-		CreatedAt:         formatTime(expense.CreatedAt),
-		UpdatedAt:         formatTime(expense.UpdatedAt),
+		CreatedAt:         utils.FormatRFC3339(expense.CreatedAt),
+		UpdatedAt:         utils.FormatRFC3339(expense.UpdatedAt),
 		RecurringSchedule: recurringSchedule,
 	}, nil
 }
