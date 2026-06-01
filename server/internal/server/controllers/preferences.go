@@ -51,7 +51,15 @@ func (pc *PreferencesController) Upsert() gin.HandlerFunc {
 			return
 		}
 		if req.Currency == "" {
-			req.Currency = "EUR"
+			req.Currency = models.DefaultCurrency
+		}
+		if !models.ValidFontSizes[req.FontSize] {
+			httperr.BadRequest(ctx, "invalid fontSize", nil)
+			return
+		}
+		if !models.ValidCurrencies[req.Currency] {
+			httperr.BadRequest(ctx, "invalid currency", nil)
+			return
 		}
 		prefs, err := pc.preferencesService.Upsert(models.UpsertPreferencesInput{
 			UserID:   uid,

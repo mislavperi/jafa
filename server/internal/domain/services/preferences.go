@@ -2,20 +2,13 @@ package services
 
 import (
 	"context"
-	"time"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
+	"github.com/mislavperi/jafa/server/utils"
 )
-
-func formatRFC3339(t pgtype.Timestamptz) string {
-	if !t.Valid {
-		return ""
-	}
-	return t.Time.UTC().Format(time.RFC3339)
-}
 
 type PreferencesService struct {
 	Queries *psql.Queries
@@ -28,14 +21,8 @@ func NewPreferencesService(queries *psql.Queries) *PreferencesService {
 func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) {
 	row, err := ps.Queries.GetUserPreferences(context.Background(), userID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return models.UserPreferences{
-				UserID:   userID,
-				AccentID: "amber",
-				FontSize: "normal",
-				DarkMode: true,
-				Currency: "EUR",
-			}, nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.DefaultPreferences(userID), nil
 		}
 		return models.UserPreferences{}, err
 	}
@@ -45,8 +32,8 @@ func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) 
 		FontSize:  row.FontSize,
 		DarkMode:  row.DarkMode,
 		Currency:  row.Currency,
-		CreatedAt: formatRFC3339(row.CreatedAt),
-		UpdatedAt: formatRFC3339(row.UpdatedAt),
+		CreatedAt: utils.FormatRFC3339(row.CreatedAt),
+		UpdatedAt: utils.FormatRFC3339(row.UpdatedAt),
 	}, nil
 }
 
@@ -67,7 +54,7 @@ func (ps *PreferencesService) Upsert(input models.UpsertPreferencesInput) (model
 		FontSize:  row.FontSize,
 		DarkMode:  row.DarkMode,
 		Currency:  row.Currency,
-		CreatedAt: formatRFC3339(row.CreatedAt),
-		UpdatedAt: formatRFC3339(row.UpdatedAt),
+		CreatedAt: utils.FormatRFC3339(row.CreatedAt),
+		UpdatedAt: utils.FormatRFC3339(row.UpdatedAt),
 	}, nil
 }

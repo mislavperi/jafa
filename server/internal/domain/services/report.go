@@ -79,8 +79,11 @@ func (rs *ReportService) MonthlySpend(userID int64) ([]models.MonthlySpend, erro
 	result := make([]models.MonthlySpend, 0, len(rows))
 	for _, row := range rows {
 		f, err := row.Total.Float64Value()
-		if err != nil || !f.Valid {
+		if err != nil {
 			return nil, err
+		}
+		if !f.Valid {
+			continue
 		}
 		result = append(result, models.MonthlySpend{
 			Month: row.Month,
