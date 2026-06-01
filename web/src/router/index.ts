@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getMe } from '@/modules/auth/api/auth'
+import { useThemeStore } from '@/stores/theme'
+import { useDarkModeStore } from '@/stores/darkMode'
+import { getMe, AuthRequiredError } from '@/modules/auth/api/auth'
 import { queryClient } from '@/core/query'
 
 const router = createRouter({
@@ -24,6 +26,30 @@ const router = createRouter({
       component: () => import('@/modules/expense/views/ExpensePage.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/expenses',
+      name: 'expenses',
+      component: () => import('@/modules/expense/views/ExpensesListPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/reports',
+      name: 'reports',
+      component: () => import('@/modules/reports/views/ReportsPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/categories',
+      name: 'categories',
+      component: () => import('@/modules/categories/views/CategoriesPage.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/modules/settings/views/SettingsPage.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
@@ -34,8 +60,23 @@ router.beforeEach(async (to) => {
     try {
       const user = await queryClient.fetchQuery({ queryKey: ['auth', 'me'], queryFn: getMe })
       authStore.setUser(user)
-    } catch {
-      authStore.clearUser()
+      // Preferences are non-critical: a failure here (even a 401) must not undo
+      // the successful authentication above, so load them in their own try/catch.
+      try {
+        const dark = useDarkModeStore()
+        const theme = useThemeStore()
+        await theme.load(dark.isDark)
+      } catch (prefsErr) {
+        console.warn('Failed to load preferences:', prefsErr)
+      }
+    } catch (err) {
+      // Only clear auth on explicit auth failure. Network/5xx → leave state alone
+      // so transient outages don't kick users out.
+      if (err instanceof AuthRequiredError) {
+        authStore.clearUser()
+      } else {
+        console.warn('Auth bootstrap failed (non-auth error):', err)
+      }
     }
     authStore.setBootstrapped()
   }

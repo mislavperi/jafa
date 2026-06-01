@@ -5,28 +5,82 @@
 @custom-variant dark (.p-dark &);
 
 @theme {
-  --color-brand: #f9bd2b;
-  --color-sidebar: #1d1f27;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --text-xs: calc(0.75rem * var(--jafa-text-scale, 1));
+  --text-sm: calc(0.875rem * var(--jafa-text-scale, 1));
+  --text-base: calc(1rem * var(--jafa-text-scale, 1));
+  --text-lg: calc(1.125rem * var(--jafa-text-scale, 1));
+  --text-xl: calc(1.25rem * var(--jafa-text-scale, 1));
+  --text-2xl: calc(1.5rem * var(--jafa-text-scale, 1));
+  --text-3xl: calc(1.875rem * var(--jafa-text-scale, 1));
+  --text-4xl: calc(2.25rem * var(--jafa-text-scale, 1));
 }
 
-* {
-  font-family: var(--font-sans);
+:root {
+  --jafa-bg: #fafafa;
+  --jafa-surface: #ffffff;
+  --jafa-surface-2: #f4f4f5;
+  --jafa-surface-3: #e4e4e7;
+  --jafa-border: #e4e4e7;
+  --jafa-border-strong: #d4d4d8;
+  --jafa-text: #18181b;
+  --jafa-text-muted: #52525b;
+  --jafa-text-dim: #71717a;
+  --jafa-hover: rgba(0, 0, 0, 0.025);
+  --jafa-accent: #d97706;
+  --jafa-receipt-bg: #f5f1e6;
+  --jafa-receipt-text: #1a1a1a;
+  --exp-receipt-bg: #fafaf6;
+  --exp-receipt-text: #1a1a1a;
+  --exp-receipt-border: #c7c5b8;
+  --exp-receipt-mute: #6b6b66;
 }
 
-/* Not expressible via PrimeVue tokens */
-.p-datatable td {
-  font-variant-numeric: tabular-nums;
+/* PrimeVue primary color follows JAFA accent */
+:root {
+  --p-primary-color: var(--jafa-accent);
+  --p-primary-contrast-color: var(--jafa-accent-text);
+  --p-primary-hover-color: var(--jafa-accent);
+  --p-primary-active-color: var(--jafa-accent);
 }
 
-.p-datatable .p-datatable-thead > tr > th {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+.p-dark {
+  --jafa-bg: #0a0a0b;
+  --jafa-surface: #131316;
+  --jafa-surface-2: #0a0a0b;
+  --jafa-surface-3: #1f1f24;
+  --jafa-border: #26262c;
+  --jafa-border-strong: #3a3a40;
+  --jafa-text: #ffffff;
+  --jafa-text-muted: #a1a1aa;
+  --jafa-text-dim: #71717a;
+  --jafa-hover: rgba(255, 255, 255, 0.015);
+  --jafa-accent: #f5c518;
+  --jafa-receipt-bg: #f5f1e6;
+  --jafa-receipt-text: #1a1a1a;
+  --exp-receipt-bg: #17171b;
+  --exp-receipt-text: #ececef;
+  --exp-receipt-border: #3a3a42;
+  --exp-receipt-mute: #7a7a82;
 }
 
+html {
+  background: var(--jafa-bg);
+  color: var(--jafa-text);
+}
 
-.p-panel .p-panel-header .p-panel-title {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.7rem;
+body {
+  color: var(--jafa-text);
+  font-size: calc(1rem * var(--jafa-text-scale, 1));
+}
+
+@keyframes drift {
+  0%   { transform: translateY(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(-120vh); opacity: 0; }
+}
+.drift {
+  animation-name: drift;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
 }

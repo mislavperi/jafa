@@ -39,12 +39,13 @@ export async function register(payload: RegisterRequest): Promise<User> {
   return response.json()
 }
 
+import { apiFetch } from '@/core/api'
+export { AuthRequiredError } from '@/core/auth-error'
+
 export async function getMe(): Promise<User> {
-  const response = await fetch(`${AUTH_API}/me`, {
-    credentials: 'include',
-  })
+  const response = await apiFetch(`${AUTH_API}/me`)
   if (!response.ok) {
-    throw new Error('Not authenticated')
+    throw new Error(`Failed to fetch user (status ${response.status})`)
   }
   return response.json()
 }

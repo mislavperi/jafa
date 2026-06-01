@@ -5,6 +5,14 @@ import Chart from 'primevue/chart'
 import Select from 'primevue/select'
 import Skeleton from 'primevue/skeleton'
 import { useFirstExpenseDate, useDailySpendForMonth } from '../composables/useExpenses'
+import { useThemeStore } from '@/stores/theme'
+
+const theme = useThemeStore()
+
+function hexWithAlpha(hex: string, alphaHex: string): string {
+  if (/^#[0-9a-fA-F]{6}$/.test(hex)) return hex + alphaHex
+  return hex
+}
 
 type MonthOption = { label: string; year: number; month: number }
 
@@ -60,26 +68,23 @@ const chartData = computed(() => {
   }
 
   const start = new Date(m.year, m.month - 1, 1)
-  const end = new Date(m.year, m.month, 0) // last day of month
+  const end = new Date(m.year, m.month, 0)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   const labels: string[] = []
-  const data: (number | null)[] = []
-  const projection: (number | null)[] = []
+  const data: number[] = []
+  const colors: string[] = []
   let cumulative = 0
 
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     cumulative += spendByDay.get(key) ?? 0
-    if (d <= today) {
-      data.push(cumulative)
-      // Share today's point so the dashed line visually connects
-      projection.push(d.getTime() === today.getTime() ? cumulative : null)
-    } else {
-      data.push(null)
-      projection.push(cumulative)
-    }
+    data.push(cumulative)
+    const accent = theme.currentAccent().color
+    if (d.getTime() === today.getTime()) colors.push(accent)
+    else if (d < today) colors.push(hexWithAlpha(accent, '99'))
+    else colors.push('#a1a1aa55')
     labels.push(d.toLocaleDateString('default', { month: 'short', day: 'numeric' }))
   }
 
@@ -91,23 +96,12 @@ const chartData = computed(() => {
       {
         label: m.label,
         data,
-        borderColor: '#6366f1',
-        backgroundColor: '#6366f133',
-        tension: 0,
-        fill: true,
-        pointRadius: 0,
-        pointHoverRadius: 4,
-      },
-      {
-        label: '',
-        data: projection,
-        borderColor: '#6366f180',
-        borderDash: [6, 4],
-        backgroundColor: 'transparent',
-        tension: 0,
-        fill: false,
-        pointRadius: 0,
-        pointHoverRadius: 0,
+        backgroundColor: colors,
+        borderColor: colors,
+        borderWidth: 0,
+        borderRadius: 3,
+        barPercentage: 0.85,
+        categoryPercentage: 0.9,
       },
     ],
   }
@@ -123,19 +117,21 @@ const chartOptions = {
   plugins: {
     legend: { display: false },
     tooltip: {
-      filter: (item: { datasetIndex: number }) => item.datasetIndex === 0,
       callbacks: {
-        label: (ctx: { raw: number | null }) => ctx.raw !== null ? `$${ctx.raw.toFixed(2)}` : '',
+        label: (ctx: { raw: number | null }) => ctx.raw !== null ? `€${ctx.raw.toFixed(2)}` : '',
       },
     },
   },
   scales: {
     x: {
-      ticks: { maxTicksLimit: 12, maxRotation: 0 },
+      ticks: { maxTicksLimit: 12, maxRotation: 0, color: '#71717a' },
+      grid: { display: false },
     },
     y: {
-      title: { display: true, text: 'Cumulative Spend ($)' },
+      title: { display: true, text: 'Cumulative Spend (€)', color: '#71717a' },
       beginAtZero: true,
+      ticks: { color: '#71717a' },
+      grid: { color: 'rgba(128,128,128,0.15)' },
     },
   },
 }
@@ -159,7 +155,7 @@ const chartOptions = {
     </div>
     <Skeleton v-if="isLoading" class="flex-1" />
     <div v-else-if="chartData.datasets.length" class="flex-1 min-h-0">
-      <Chart type="line" :data="chartData" :options="chartOptions" class="w-full h-full" />
+      <Chart type="bar" :data="chartData" :options="chartOptions" class="w-full h-full" />
     </div>
     <div v-else class="text-center text-surface-500 py-8">
       No spend data available
