@@ -290,11 +290,11 @@ const chartOptions = {
   animation: { animateRotate: false, animateScale: false, duration: 300 },
   plugins: {
     legend: { display: false },
-    tooltip: { callbacks: { label: (ctx: any) => ` ${money(Number(ctx.raw))}` } },
+    tooltip: { callbacks: { label: (ctx: { raw: unknown }) => ` ${money(Number(ctx.raw))}` } },
   },
-  onClick: (_event: any, elements: any[]) => {
+  onClick: (_event: unknown, elements: { index: number }[]) => {
     if (!elements.length) return
-    const index = elements[0].index
+    const index = elements[0]!.index
     const clickedName = chartData.value.labels[index]
     if (clickedName) toggleExpense(clickedName)
   },

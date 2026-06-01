@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import SideBar from '@/core/components/SideBar.vue'
+
+defineOptions({ name: 'AppRoot' })
 </script>
 
 <template>
