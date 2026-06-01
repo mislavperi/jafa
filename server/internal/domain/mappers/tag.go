@@ -17,8 +17,8 @@ func (tm *TagMapper) MapToDomain(tag psql.Tag) (models.Tag, error) {
 		Id:        tag.ID,
 		Name:      tag.Name,
 		IsDeleted: tag.IsDeleted,
-		CreatedAt: tag.CreatedAt.Time.String(),
-		UpdatedAt: tag.UpdatedAt.Time.String(),
+		CreatedAt: formatTime(tag.CreatedAt),
+		UpdatedAt: formatTime(tag.UpdatedAt),
 	}, nil
 }
 

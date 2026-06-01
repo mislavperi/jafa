@@ -20,6 +20,7 @@ type Expense struct {
 	RecurrenceInterval  pgtype.Text
 	RecurrenceDay       pgtype.Int4
 	RecurrenceStartDate pgtype.Date
+	UserID              int64
 }
 
 type ExpensesTag struct {
@@ -50,6 +51,7 @@ type Tag struct {
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 	IsDeleted bool
+	UserID    int64
 }
 
 type User struct {

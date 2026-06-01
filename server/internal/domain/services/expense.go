@@ -2,13 +2,19 @@ package services
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 	"github.com/mislavperi/jafa/server/utils"
 )
+
+// ErrExpenseNotFound is returned when an expense does not exist or is not owned
+// by the requesting user. Controllers map this to HTTP 404.
+var ErrExpenseNotFound = errors.New("expense not found")
 
 type ExpenseService struct {
 	Queries *psql.Queries
@@ -22,20 +28,16 @@ func NewExpenseService(queries *psql.Queries) *ExpenseService {
 	}
 }
 
-func (es *ExpenseService) GetAllExpenses() ([]models.Expense, error) {
-	expenses, err := es.Queries.GetAllExpenses(context.Background())
+func (es *ExpenseService) GetAllExpenses(userID int64) ([]models.Expense, error) {
+	expenses, err := es.Queries.GetAllExpenses(context.Background(), userID)
 	if err != nil {
 		return nil, err
 	}
-	mappedExpenses, err := es.Mapper.MapManyToDomain(expenses)
-	if err != nil {
-		return nil, err
-	}
-	return mappedExpenses, nil
+	return es.Mapper.MapManyToDomain(expenses)
 }
 
-func (es *ExpenseService) GetTotalSpendThisMonth() (models.MonthlyTotal, error) {
-	total, err := es.Queries.GetTotalSpendThisMonth(context.Background())
+func (es *ExpenseService) GetTotalSpendThisMonth(userID int64) (models.MonthlyTotal, error) {
+	total, err := es.Queries.GetTotalSpendThisMonth(context.Background(), userID)
 	if err != nil {
 		return models.MonthlyTotal{}, err
 	}
@@ -48,8 +50,11 @@ func (es *ExpenseService) GetTotalSpendThisMonth() (models.MonthlyTotal, error) 
 	}, nil
 }
 
-func (es *ExpenseService) GetDailySpend(months int32) ([]models.DailySpend, error) {
-	rows, err := es.Queries.GetDailySpend(context.Background(), months)
+func (es *ExpenseService) GetDailySpend(userID int64, months int32) ([]models.DailySpend, error) {
+	rows, err := es.Queries.GetDailySpend(context.Background(), psql.GetDailySpendParams{
+		UserID: userID,
+		Months: months,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -67,19 +72,20 @@ func (es *ExpenseService) GetDailySpend(months int32) ([]models.DailySpend, erro
 	return result, nil
 }
 
-func (es *ExpenseService) GetExpensesByMonth(year, month int32) ([]models.Expense, error) {
+func (es *ExpenseService) GetExpensesByMonth(userID int64, year, month int32) ([]models.Expense, error) {
 	expenses, err := es.Queries.GetExpensesByMonth(context.Background(), psql.GetExpensesByMonthParams{
-		Year:  year,
-		Month: month,
+		UserID: userID,
+		Year:   year,
+		Month:  month,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return es.Mapper.MapManyRowsToDomain(expenses)
+	return es.Mapper.MapManyToDomain(expenses)
 }
 
-func (es *ExpenseService) GetFirstExpenseDate() (string, error) {
-	result, err := es.Queries.GetFirstExpenseDate(context.Background())
+func (es *ExpenseService) GetFirstExpenseDate(userID int64) (string, error) {
+	result, err := es.Queries.GetFirstExpenseDate(context.Background(), userID)
 	if err != nil {
 		return "", err
 	}
@@ -90,10 +96,11 @@ func (es *ExpenseService) GetFirstExpenseDate() (string, error) {
 	return s, nil
 }
 
-func (es *ExpenseService) GetDailySpendForMonth(year, month int32) ([]models.DailySpend, error) {
+func (es *ExpenseService) GetDailySpendForMonth(userID int64, year, month int32) ([]models.DailySpend, error) {
 	rows, err := es.Queries.GetDailySpendForMonth(context.Background(), psql.GetDailySpendForMonthParams{
-		Year:  year,
-		Month: month,
+		UserID: userID,
+		Year:   year,
+		Month:  month,
 	})
 	if err != nil {
 		return nil, err
@@ -113,6 +120,7 @@ func (es *ExpenseService) GetDailySpendForMonth(year, month int32) ([]models.Dai
 }
 
 type CreateExpenseInput struct {
+	UserID            int64
 	Name              string
 	Amount            float32
 	Cost              float32
@@ -137,6 +145,7 @@ func (es *ExpenseService) CreateExpense(input CreateExpenseInput) (models.Expens
 		recurrenceStartDate = pgtype.Date{Time: utils.ParseDate(input.RecurringSchedule.StartDate), Valid: true}
 	}
 	expense, err := es.Queries.CreateExpense(context.Background(), psql.CreateExpenseParams{
+		UserID:              input.UserID,
 		Name:                input.Name,
 		Amount:              amount,
 		Cost:                cost,
@@ -150,14 +159,75 @@ func (es *ExpenseService) CreateExpense(input CreateExpenseInput) (models.Expens
 	return es.Mapper.MapToDomain(expense)
 }
 
-func (es *ExpenseService) GetById(id int64) (models.Expense, error) {
-	expense, err := es.Queries.GetExpenseById(context.Background(), id)
+type UpdateExpenseInput struct {
+	ID                int64
+	UserID            int64
+	Name              string
+	Amount            float32
+	Cost              float32
+	RecurringSchedule *models.RecurringSchedule
+}
+
+func (es *ExpenseService) UpdateExpense(input UpdateExpenseInput) (models.Expense, error) {
+	amount, err := utils.FloatToNumeric(input.Amount)
 	if err != nil {
 		return models.Expense{}, err
 	}
-	mappedExpense, err := es.Mapper.MapToDomain(expense)
+	cost, err := utils.FloatToNumeric(input.Cost)
 	if err != nil {
 		return models.Expense{}, err
 	}
-	return mappedExpense, nil
+	var recurrenceInterval pgtype.Text
+	var recurrenceDay pgtype.Int4
+	var recurrenceStartDate pgtype.Date
+	if input.RecurringSchedule != nil {
+		recurrenceInterval = pgtype.Text{String: string(input.RecurringSchedule.Interval), Valid: true}
+		recurrenceDay = pgtype.Int4{Int32: int32(input.RecurringSchedule.DayOfMonth), Valid: true}
+		recurrenceStartDate = pgtype.Date{Time: utils.ParseDate(input.RecurringSchedule.StartDate), Valid: true}
+	}
+	expense, err := es.Queries.UpdateExpense(context.Background(), psql.UpdateExpenseParams{
+		ID:                  input.ID,
+		UserID:              input.UserID,
+		Name:                input.Name,
+		Amount:              amount,
+		Cost:                cost,
+		RecurrenceInterval:  recurrenceInterval,
+		RecurrenceDay:       recurrenceDay,
+		RecurrenceStartDate: recurrenceStartDate,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Expense{}, ErrExpenseNotFound
+		}
+		return models.Expense{}, err
+	}
+	return es.Mapper.MapToDomain(expense)
+}
+
+func (es *ExpenseService) DeleteExpense(userID, id int64) error {
+	rows, err := es.Queries.SoftDeleteExpense(context.Background(), psql.SoftDeleteExpenseParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrExpenseNotFound
+	}
+	return nil
+}
+
+func (es *ExpenseService) GetById(userID, id int64) (models.Expense, error) {
+	expense, err := es.Queries.GetExpenseById(context.Background(), psql.GetExpenseByIdParams{
+		ID:     id,
+		UserID: userID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Expense{}, ErrExpenseNotFound
+		}
+		return models.Expense{}, err
+	}
+	return es.Mapper.MapToDomain(expense)
 }

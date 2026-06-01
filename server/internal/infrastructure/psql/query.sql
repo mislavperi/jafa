@@ -1,73 +1,104 @@
 -- name: GetExpenseById :one
-SELECT * FROM expenses 
-WHERE id=$1 LIMIT 1;
+SELECT * FROM expenses
+WHERE id=$1 AND user_id=$2 AND is_deleted = false
+LIMIT 1;
 
 -- name: GetAllExpenses :many
-SELECT * from expenses;
+SELECT * FROM expenses
+WHERE user_id=$1 AND is_deleted = false;
 
 -- name: GetTotalSpendThisMonth :one
 SELECT COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
+  AND user_id = $1
   AND created_at >= date_trunc('month', CURRENT_TIMESTAMP);
 
 -- name: GetDailySpend :many
 SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
+  AND user_id = sqlc.arg(user_id)::bigint
   AND created_at >= (date_trunc('month', CURRENT_TIMESTAMP) - (sqlc.arg(months)::int || ' months')::interval)
 GROUP BY created_at::date
 ORDER BY day;
 
 -- name: GetExpensesByMonth :many
-SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at
+SELECT *
 FROM expenses
 WHERE is_deleted = false
+  AND user_id = sqlc.arg(user_id)::bigint
   AND EXTRACT(YEAR FROM created_at) = sqlc.arg(year)::int
   AND EXTRACT(MONTH FROM created_at) = sqlc.arg(month)::int
 ORDER BY created_at;
 
 -- name: CreateExpense :one
-INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date;
+INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date, user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING *;
+
+-- name: UpdateExpense :one
+UPDATE expenses
+SET name = $3,
+    amount = $4,
+    cost = $5,
+    recurrence_interval = $6,
+    recurrence_day = $7,
+    recurrence_start_date = $8,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND is_deleted = false
+RETURNING *;
+
+-- name: SoftDeleteExpense :execrows
+UPDATE expenses
+SET is_deleted = true,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND user_id = $2 AND is_deleted = false;
 
 -- name: GetTagsForExpense :many
-SELECT t.id, t.name, t.created_at, t.updated_at, t.is_deleted
+SELECT t.*
 FROM tags t
 JOIN expenses_tags et ON t.id = et.tag_id
-WHERE et.expense_id = $1 AND t.is_deleted = false
+JOIN expenses e ON e.id = et.expense_id
+WHERE et.expense_id = $1
+  AND e.user_id = $2
+  AND t.user_id = $2
+  AND t.is_deleted = false
 ORDER BY t.name;
 
 -- name: GetAllTags :many
-SELECT id, name, created_at, updated_at, is_deleted
+SELECT *
 FROM tags
-WHERE is_deleted = false
+WHERE is_deleted = false AND user_id = $1
 ORDER BY name;
 
 -- name: CreateTag :one
-INSERT INTO tags (name)
-VALUES ($1)
-RETURNING id, name, created_at, updated_at, is_deleted;
+INSERT INTO tags (name, user_id)
+VALUES ($1, $2)
+RETURNING *;
 
 -- name: AddTagToExpense :exec
 INSERT INTO expenses_tags (expense_id, tag_id)
-VALUES ($1, $2)
+SELECT sqlc.arg(expense_id)::bigint, sqlc.arg(tag_id)::bigint
+WHERE EXISTS (SELECT 1 FROM expenses WHERE id = sqlc.arg(expense_id)::bigint AND user_id = sqlc.arg(user_id)::bigint AND is_deleted = false)
+  AND EXISTS (SELECT 1 FROM tags WHERE id = sqlc.arg(tag_id)::bigint AND user_id = sqlc.arg(user_id)::bigint AND is_deleted = false)
 ON CONFLICT DO NOTHING;
 
 -- name: RemoveTagFromExpense :exec
 DELETE FROM expenses_tags
-WHERE expense_id = $1 AND tag_id = $2;
+WHERE expense_id = sqlc.arg(expense_id)::bigint AND tag_id = sqlc.arg(tag_id)::bigint
+  AND EXISTS (SELECT 1 FROM expenses WHERE id = sqlc.arg(expense_id)::bigint AND user_id = sqlc.arg(user_id)::bigint);
 
 -- name: GetFirstExpenseDate :one
 SELECT COALESCE(TO_CHAR(MIN(created_at::date), 'YYYY-MM-DD'), '') AS first_date
 FROM expenses
-WHERE is_deleted = false;
+WHERE is_deleted = false AND user_id = $1;
 
 -- name: GetDailySpendForMonth :many
 SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
+  AND user_id = sqlc.arg(user_id)::bigint
   AND EXTRACT(YEAR FROM created_at) = sqlc.arg(year)::int
   AND EXTRACT(MONTH FROM created_at) = sqlc.arg(month)::int
 GROUP BY created_at::date
