@@ -20,6 +20,18 @@ func main() {
 
 	ctx := context.Background()
 
+	// Make the seed repeatable: wipe previously-seeded data so re-running
+	// `make seed` doesn't collide with existing rows (e.g. the unique
+	// (user_id, name) index on tags). Users/preferences are left intact; the
+	// admin user is upserted below.
+	_, err = pool.Exec(ctx,
+		"TRUNCATE expenses, expenses_tags, tags, item_price, item, categories RESTART IDENTITY CASCADE",
+	)
+	if err != nil {
+		log.Fatalf("failed to reset seed tables: %v", err)
+	}
+	fmt.Println("reset seed tables")
+
 	// Seed default admin user
 	hash, err := bcrypt.GenerateFromPassword([]byte("admin"), bcrypt.DefaultCost)
 	if err != nil {
