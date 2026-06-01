@@ -9,27 +9,22 @@ import { useAllTags, useCreateTag, useAddTagToExpense, useRemoveTagFromExpense }
 import { getTagsForExpense } from '../api/tag'
 import type { Tag, RecurrenceInterval, RecurringSchedule, Expense } from '../models/expense'
 import { tagColor } from '../constants'
+import {
+  dividerClass,
+  inputClass,
+  stampBase,
+  stampSel,
+  freqBase,
+  freqSel,
+  recurringOnClass,
+  tenderClass,
+} from '../constants/receiptClasses'
 import { useReceiptStamp } from '../composables/useReceiptStamp'
 import { useThemeStore } from '@/stores/theme'
 import { currencySymbol } from '@/core/currency'
 
 const theme = useThemeStore()
 const symbol = computed(() => currencySymbol(theme.currency))
-
-// Receipt-styled control classes expressed as Tailwind utilities (kept here so
-// the markup stays readable and the scoped <style> can stay minimal).
-const dividerClass = 'border-0 border-t-[1.5px] border-dashed border-[var(--exp-receipt-border)] my-2.5'
-const inputClass =
-  'bg-transparent border-0 border-b-[1.5px] border-dashed border-[var(--exp-receipt-border)] pt-1 px-0.5 pb-1.5 text-[13px] text-[var(--exp-receipt-text)] outline-none focus:border-b-[var(--exp-receipt-text)] placeholder:text-[color-mix(in_srgb,var(--exp-receipt-text)_40%,transparent)]'
-const stampBase =
-  'flex items-center gap-[7px] px-[9px] py-[7px] bg-[var(--exp-receipt-bg)] border-[1.5px] border-[var(--exp-receipt-border)] text-[var(--exp-receipt-text)] text-[10.5px] tracking-[0.08em] cursor-pointer text-left uppercase font-semibold transition-all duration-[120ms] hover:border-[var(--exp-receipt-text)]'
-const stampSel = 'bg-[var(--exp-receipt-text)] border-[var(--exp-receipt-text)] text-[var(--exp-receipt-bg)]'
-const freqBase =
-  'py-[7px] px-1 bg-transparent border-[1.5px] border-[var(--exp-receipt-text)] text-[var(--exp-receipt-text)] text-[9.5px] tracking-[0.14em] cursor-pointer uppercase font-bold transition-all hover:bg-[color-mix(in_srgb,var(--exp-receipt-text)_5%,transparent)]'
-const freqSel = 'bg-[var(--exp-receipt-text)] text-[var(--exp-receipt-bg)]'
-const recurringOnClass = 'bg-[color-mix(in_srgb,var(--jafa-accent)_8%,transparent)] border-[var(--jafa-accent)] border-solid'
-const tenderClass =
-  'bg-[var(--exp-receipt-text)] text-[var(--exp-receipt-bg)] border-0 cursor-pointer enabled:hover:opacity-85 disabled:bg-[var(--exp-receipt-border)]'
 
 const props = defineProps<{ visible: boolean; expense?: Expense | null }>()
 const emit = defineEmits<{ 'update:visible': [value: boolean] }>()
