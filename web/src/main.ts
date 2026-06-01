@@ -11,6 +11,9 @@ import router from './router'
 
 const MONO_STACK = `'Geist Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace`
 
+// PrimeVue's generated design-token types are narrower than the runtime schema
+// (e.g. letterSpacing/borderRadius on some component roots, function-form css),
+// so the override object is typed loosely. Values are valid at runtime.
 const JafaPreset = definePreset(Aura, {
   primitive: {
     borderRadius: {
@@ -214,7 +217,8 @@ const JafaPreset = definePreset(Aura, {
       item: { padding: '0.5rem 0.75rem' },
     },
   },
-})
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+} as any)
 
 const app = createApp(App)
 

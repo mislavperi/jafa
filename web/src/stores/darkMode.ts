@@ -3,8 +3,10 @@ import { defineStore } from 'pinia'
 import { DARK_MODE_STORAGE_KEY as STORAGE_KEY } from '@/core/constants/storage'
 
 export const useDarkModeStore = defineStore('darkMode', () => {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  const hasStorage = typeof localStorage !== 'undefined'
+  const stored = hasStorage ? localStorage.getItem(STORAGE_KEY) : null
+  const prefersDark =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
   const isDark = ref(stored !== null ? stored === 'true' : prefersDark)
 
   function apply() {
@@ -14,7 +16,7 @@ export const useDarkModeStore = defineStore('darkMode', () => {
 
   function setDark(v: boolean) {
     isDark.value = v
-    localStorage.setItem(STORAGE_KEY, String(v))
+    if (hasStorage) localStorage.setItem(STORAGE_KEY, String(v))
     apply()
   }
 

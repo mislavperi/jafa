@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, reactive } from 'vue'
+import { ref, computed } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -11,6 +11,10 @@ import { useAllTags, useCreateTag, useAddTagToExpense } from '../composables/use
 import type { Tag } from '../models/expense'
 import type { ScanStep, Sample, ReviewItem } from '../models/receiptScan'
 import { SAMPLES, CATEGORY_HINTS, guessCategory } from '../constants/receiptSamples'
+import { useThemeStore } from '@/stores/theme'
+import { formatCurrency } from '@/core/currency'
+
+const theme = useThemeStore()
 
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [value: boolean] }>()
@@ -23,6 +27,10 @@ const dragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
+// Live OCR is not implemented yet. A real upload is previewed but NOT parsed —
+// only the explicit "try a sample" receipts run the (demo) scan flow, so we
+// never present fabricated line items as if they were read from the user's image.
+const liveScanUnavailable = ref(false)
 
 const { mutateAsync: createExpense } = useCreateExpense()
 const { data: allTags } = useAllTags()
@@ -37,6 +45,7 @@ function reset() {
   dragging.value = false
   submitting.value = false
   submitError.value = null
+  liveScanUnavailable.value = false
 }
 
 function close() {
@@ -49,14 +58,16 @@ function handleFile(file: File | null | undefined) {
   const reader = new FileReader()
   reader.onload = (e) => {
     imageData.value = (e.target?.result as string) ?? null
-    const sample = SAMPLES[Math.floor(Math.random() * SAMPLES.length)]
-    startScan(sample)
+    // No real OCR yet — preview the image and tell the user to use a sample
+    // instead of fabricating items from a random canned receipt.
+    liveScanUnavailable.value = true
   }
   reader.readAsDataURL(file)
 }
 
 function useSample(s: Sample) {
   imageData.value = null
+  liveScanUnavailable.value = false
   startScan(s)
 }
 
@@ -115,8 +126,6 @@ const tagOptions = computed(() => {
   return [...known].map((name) => ({ label: name, value: name }))
 })
 
-const pickerOpen = reactive<Record<number, boolean>>({})
-
 async function ensureTag(name: string): Promise<Tag> {
   const existing = (allTags.value ?? []).find((t) => t.name.toLowerCase() === name.toLowerCase())
   if (existing) return existing
@@ -155,7 +164,7 @@ async function commit() {
 
 function fmt(n: number) {
   const sign = n < 0 ? '-' : ''
-  return `${sign}€${Math.abs(n).toFixed(2)}`
+  return `${sign}${formatCurrency(Math.abs(n), theme.currency)}`
 }
 
 function confidenceTone(c: number) {
@@ -221,6 +230,11 @@ function confidenceTone(c: number) {
           <div class="text-[calc(11px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] mt-1 tracking-wider uppercase">PNG · JPG · HEIC · max 10MB</div>
           <Button label="Choose file" icon="pi pi-plus" severity="secondary" size="small" class="mt-4" @click.stop="fileInput?.click()" />
         </div>
+
+        <Message v-if="liveScanUnavailable" severity="info" :closable="false" class="mt-4">
+          Automatic receipt reading isn't available yet — your uploaded image won't be parsed.
+          Pick one of the sample receipts below to preview the import flow.
+        </Message>
 
         <div class="flex items-center gap-3 my-6 text-[calc(11px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] uppercase tracking-[0.14em]">
           <div class="h-px flex-1 bg-[var(--jafa-border)]" />

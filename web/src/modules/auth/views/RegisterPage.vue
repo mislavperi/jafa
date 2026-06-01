@@ -22,7 +22,7 @@ function resolver({ values }: { values: Record<string, string> }) {
 }
 
 function handleSubmit({ valid, values }: { valid: boolean; values: Record<string, string> }) {
-  if (valid) {
+  if (valid && values.username && values.password) {
     register({
       username: values.username,
       password: values.password,

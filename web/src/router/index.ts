@@ -60,9 +60,15 @@ router.beforeEach(async (to) => {
     try {
       const user = await queryClient.fetchQuery({ queryKey: ['auth', 'me'], queryFn: getMe })
       authStore.setUser(user)
-      const dark = useDarkModeStore()
-      const theme = useThemeStore()
-      await theme.load(dark.isDark)
+      // Preferences are non-critical: a failure here (even a 401) must not undo
+      // the successful authentication above, so load them in their own try/catch.
+      try {
+        const dark = useDarkModeStore()
+        const theme = useThemeStore()
+        await theme.load(dark.isDark)
+      } catch (prefsErr) {
+        console.warn('Failed to load preferences:', prefsErr)
+      }
     } catch (err) {
       // Only clear auth on explicit auth failure. Network/5xx → leave state alone
       // so transient outages don't kick users out.

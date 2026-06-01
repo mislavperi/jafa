@@ -34,6 +34,7 @@ interface PrefsPayload {
 
 import { apiFetch } from '@/core/api'
 import { isAuthRequiredError } from '@/core/auth-error'
+import { useDarkModeStore } from '@/stores/darkMode'
 
 async function fetchPrefs(): Promise<PrefsPayload | null> {
   try {
@@ -97,12 +98,16 @@ export const useThemeStore = defineStore('theme', () => {
       accentId.value = prefs.accentId
       fontSize.value = prefs.fontSize
       if (prefs.currency) currency.value = prefs.currency
+      // Restore the saved dark-mode choice so it syncs across devices, not just
+      // the value cached in localStorage.
+      if (typeof prefs.darkMode === 'boolean') {
+        useDarkModeStore().setDark(prefs.darkMode)
+      }
       suppressSave = false
     } else {
-      // No prefs yet — seed defaults from current dark-mode state
-      suppressSave = true
+      // No prefs row yet — keep the current dark-mode state (already mirrored to
+      // the backend the first time the user changes it).
       void isDark
-      suppressSave = false
     }
     loaded.value = true
     apply()

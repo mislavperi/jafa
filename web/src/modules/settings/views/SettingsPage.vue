@@ -15,8 +15,8 @@ const authStore = useAuthStore()
 const user = computed(() => authStore.currentUser)
 
 const initial = computed(() => {
-  if (user.value?.first_name) return user.value.first_name[0].toUpperCase()
-  if (user.value?.username) return user.value.username[0].toUpperCase()
+  if (user.value?.first_name) return user.value.first_name.charAt(0).toUpperCase()
+  if (user.value?.username) return user.value.username.charAt(0).toUpperCase()
   return '?'
 })
 

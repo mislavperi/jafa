@@ -60,16 +60,23 @@ const monthDeltaPct = computed(() => {
   return ((currentTotal.value - lastMonthTotal.value) / lastMonthTotal.value) * 100
 })
 
-// Biggest category by expense name grouping
-const topCategory = computed(() => {
-  const expenses = currentMonthExpenses.value ?? []
-  if (!expenses.length) return null
+// Current-month spend grouped by expense name, largest first. Shared by the
+// "top expense" insight and the breakdown pie so we only aggregate once.
+const spendByName = computed(() => {
   const map = new Map<string, number>()
-  for (const e of expenses) map.set(e.name, (map.get(e.name) ?? 0) + e.amount)
-  const [name, amount] = [...map.entries()].sort((a, b) => b[1] - a[1])[0] ?? []
-  if (!name) return null
-  const pct = currentTotal.value ? Math.round((amount / currentTotal.value) * 100) : 0
-  return { name, amount, pct }
+  for (const e of currentMonthExpenses.value ?? []) {
+    map.set(e.name, (map.get(e.name) ?? 0) + e.amount)
+  }
+  return [...map.entries()]
+    .map(([name, total]) => ({ name, total }))
+    .sort((a, b) => b.total - a.total)
+})
+
+const topCategory = computed(() => {
+  const top = spendByName.value[0]
+  if (!top) return null
+  const pct = currentTotal.value ? Math.round((top.total / currentTotal.value) * 100) : 0
+  return { name: top.name, amount: top.total, pct }
 })
 
 const dayOfMonth = now.getDate()
@@ -105,17 +112,8 @@ const insights = computed(() => [
   },
 ])
 
-// Breakdown items for pie chart
-const breakdownItems = computed(() => {
-  const map = new Map<string, number>()
-  for (const e of currentMonthExpenses.value ?? []) {
-    map.set(e.name, (map.get(e.name) ?? 0) + e.amount)
-  }
-  return [...map.entries()]
-    .map(([name, total]) => ({ name, total }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 8)
-})
+// Breakdown items for pie chart (top 8 of the shared aggregation)
+const breakdownItems = computed(() => spendByName.value.slice(0, 8))
 
 // Upcoming bills: recurring expenses, sorted by next due date
 interface UpcomingBill {
@@ -308,7 +306,7 @@ function formatDate(d?: string) {
                   cutout: '68%',
                   plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: (ctx) => ` ${money(Number(ctx.raw))}` } }
+                    tooltip: { callbacks: { label: (ctx: { raw: unknown }) => ` ${money(Number(ctx.raw))}` } }
                   }
                 }"
                 class="w-full h-full"
