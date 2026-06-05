@@ -11,6 +11,7 @@ web/.wrangler
 web/.output
 web/.vinxi
 web/todos.json
+web/components.d.ts
 
 server/.env
 server/tmp/
