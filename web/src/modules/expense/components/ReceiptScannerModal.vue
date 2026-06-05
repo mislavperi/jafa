@@ -6,11 +6,13 @@ import ProgressSpinner from 'primevue/progressspinner'
 import Select from 'primevue/select'
 import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
+import InputText from 'primevue/inputtext'
 import { useCreateExpense } from '../composables/useExpenses'
 import { useAllTags, useCreateTag, useAddTagToExpense } from '../composables/useTags'
 import type { Tag } from '../models/expense'
 import type { ScanStep, Sample, ReviewItem } from '../models/receiptScan'
 import { SAMPLES, CATEGORY_HINTS, guessCategory } from '../constants/receiptSamples'
+import { TAG_COLORS, tagColor } from '../constants'
 import { useThemeStore } from '@/stores/theme'
 import { formatCurrency } from '@/core/currency'
 
@@ -27,6 +29,9 @@ const dragging = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
+const importMode = ref<'individual' | 'sum'>('individual')
+const sumName = ref('')
+const sumTag = ref('')
 // Live OCR is not implemented yet. A real upload is previewed but NOT parsed —
 // only the explicit "try a sample" receipts run the (demo) scan flow, so we
 // never present fabricated line items as if they were read from the user's image.
@@ -46,6 +51,9 @@ function reset() {
   submitting.value = false
   submitError.value = null
   liveScanUnavailable.value = false
+  importMode.value = 'individual'
+  sumName.value = ''
+  sumTag.value = ''
 }
 
 function close() {
@@ -119,12 +127,34 @@ const autoItems = computed(() => items.value.filter((i) => !i.needsReview))
 const includedItems = computed(() => items.value.filter((i) => i.included && i.amount > 0))
 const includedTotal = computed(() => includedItems.value.reduce((s, i) => s + i.amount, 0))
 
+function tagColorFromName(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (((h * 31) >>> 0) + name.charCodeAt(i)) >>> 0
+  return TAG_COLORS[h % TAG_COLORS.length]!
+}
+
 const tagOptions = computed(() => {
   const known = new Set<string>([...Object.keys(CATEGORY_HINTS), 'other'])
   for (const t of allTags.value ?? []) known.add(t.name.toLowerCase())
   for (const i of items.value) known.add(i.finalTag)
-  return [...known].map((name) => ({ label: name, value: name }))
+  return [...known].map((name) => {
+    const existing = (allTags.value ?? []).find((t) => t.name.toLowerCase() === name.toLowerCase())
+    const color = existing ? tagColor(existing.id) : tagColorFromName(name)
+    return { label: name, value: name, color }
+  })
 })
+
+function getTagColor(name: string): string {
+  return tagOptions.value.find((o) => o.value === name)?.color ?? '#71717a'
+}
+
+function switchToSum() {
+  importMode.value = 'sum'
+  sumName.value = parsed.value?.merchant ?? ''
+  const counts: Record<string, number> = {}
+  for (const it of includedItems.value) counts[it.finalTag] = (counts[it.finalTag] ?? 0) + 1
+  sumTag.value = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
+}
 
 async function ensureTag(name: string): Promise<Tag> {
   const existing = (allTags.value ?? []).find((t) => t.name.toLowerCase() === name.toLowerCase())
@@ -136,6 +166,26 @@ async function commit() {
   if (!parsed.value || includedItems.value.length === 0) return
   submitting.value = true
   submitError.value = null
+
+  if (importMode.value === 'sum') {
+    try {
+      const name = sumName.value.trim() || parsed.value.merchant
+      const expense = await createExpense({ name, amount: 1, cost: includedTotal.value })
+      if (sumTag.value) {
+        try {
+          const tag = await ensureTag(sumTag.value)
+          await addTag({ expenseId: expense.id, tagId: tag.id })
+        } catch { /* tag failure non-blocking */ }
+      }
+      submitting.value = false
+      close()
+    } catch {
+      submitting.value = false
+      submitError.value = 'Failed to import expense'
+    }
+    return
+  }
+
   const failed: string[] = []
   for (const it of includedItems.value) {
     try {
@@ -331,9 +381,23 @@ function confidenceTone(c: number) {
                     option-value="value"
                     placeholder="Tag"
                     size="small"
-                    class="w-36"
+                    class="w-40"
                     @update:model-value="(v) => setTag(it.id, v)"
-                  />
+                  >
+                    <template #value="{ value: v }">
+                      <div v-if="v" class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: getTagColor(v) }" />
+                        <span>{{ v }}</span>
+                      </div>
+                      <span v-else class="text-[var(--jafa-text-muted)]">Tag</span>
+                    </template>
+                    <template #option="{ option }">
+                      <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: option.color }" />
+                        <span>{{ option.label }}</span>
+                      </div>
+                    </template>
+                  </Select>
                   <div class="w-20 text-right tabular-nums text-[calc(13px*var(--jafa-text-scale,1))] font-semibold">{{ fmt(it.amount) }}</div>
                 </div>
               </div>
@@ -364,9 +428,23 @@ function confidenceTone(c: number) {
                     option-label="label"
                     option-value="value"
                     size="small"
-                    class="w-36"
+                    class="w-40"
                     @update:model-value="(v) => setTag(it.id, v)"
-                  />
+                  >
+                    <template #value="{ value: v }">
+                      <div v-if="v" class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: getTagColor(v) }" />
+                        <span>{{ v }}</span>
+                      </div>
+                      <span v-else class="text-[var(--jafa-text-muted)]">Tag</span>
+                    </template>
+                    <template #option="{ option }">
+                      <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: option.color }" />
+                        <span>{{ option.label }}</span>
+                      </div>
+                    </template>
+                  </Select>
                   <div class="w-20 text-right tabular-nums text-[calc(13px*var(--jafa-text-scale,1))] font-semibold">{{ fmt(it.amount) }}</div>
                 </div>
               </div>
@@ -376,6 +454,62 @@ function confidenceTone(c: number) {
           <!-- Footer summary + actions -->
           <div class="border-t border-[var(--jafa-border)] p-4 flex flex-col gap-3 bg-[#0f0f12]">
             <Message v-if="submitError" severity="error" :closable="false">{{ submitError }}</Message>
+
+            <!-- Import mode toggle -->
+            <div class="flex border border-[var(--jafa-border)] rounded-[8px] overflow-hidden text-[calc(11px*var(--jafa-text-scale,1))] uppercase tracking-[0.1em]">
+              <button
+                type="button"
+                class="flex-1 px-3 py-1.5 transition flex items-center justify-center gap-1.5"
+                :class="importMode === 'individual' ? 'bg-[var(--jafa-accent)] text-[var(--jafa-surface)] font-semibold' : 'text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)]'"
+                @click="importMode = 'individual'"
+              >
+                <i class="pi pi-list text-[calc(10px*var(--jafa-text-scale,1))]" />
+                Individual items
+              </button>
+              <button
+                type="button"
+                class="flex-1 px-3 py-1.5 border-l border-[var(--jafa-border)] transition flex items-center justify-center gap-1.5"
+                :class="importMode === 'sum' ? 'bg-[var(--jafa-accent)] text-[var(--jafa-surface)] font-semibold' : 'text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)]'"
+                @click="switchToSum"
+              >
+                <i class="pi pi-box text-[calc(10px*var(--jafa-text-scale,1))]" />
+                Single expense
+              </button>
+            </div>
+
+            <!-- Sum mode: name + tag override -->
+            <div v-if="importMode === 'sum'" class="flex gap-2">
+              <InputText
+                v-model="sumName"
+                placeholder="Expense name"
+                size="small"
+                class="flex-1 text-[calc(12px*var(--jafa-text-scale,1))]"
+              />
+              <Select
+                v-model="sumTag"
+                :options="tagOptions"
+                option-label="label"
+                option-value="value"
+                placeholder="Tag"
+                size="small"
+                class="w-40"
+              >
+                <template #value="{ value: v }">
+                  <div v-if="v" class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: getTagColor(v) }" />
+                    <span>{{ v }}</span>
+                  </div>
+                  <span v-else class="text-[var(--jafa-text-muted)]">Tag (optional)</span>
+                </template>
+                <template #option="{ option }">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full shrink-0" :style="{ background: option.color }" />
+                    <span>{{ option.label }}</span>
+                  </div>
+                </template>
+              </Select>
+            </div>
+
             <div class="flex items-center justify-between">
               <div class="flex flex-col">
                 <span class="text-[calc(10px*var(--jafa-text-scale,1))] uppercase tracking-[0.12em] text-[var(--jafa-text-muted)]">Selected</span>
@@ -389,7 +523,7 @@ function confidenceTone(c: number) {
             <div class="flex gap-2 justify-end">
               <Button label="Scan another" icon="pi pi-chevron-left" severity="secondary" size="small" @click="reset" />
               <Button
-                :label="`Add ${includedItems.length} expense${includedItems.length !== 1 ? 's' : ''}`"
+                :label="importMode === 'sum' ? 'Add as 1 expense' : `Add ${includedItems.length} expense${includedItems.length !== 1 ? 's' : ''}`"
                 icon="pi pi-chevron-right"
                 icon-pos="right"
                 size="small"
