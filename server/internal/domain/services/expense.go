@@ -18,14 +18,14 @@ import (
 var ErrExpenseNotFound = errors.New("expense not found")
 
 type ExpenseService struct {
-	Queries *psql.Queries
+	Queries ExpenseQuerier
 	Pool    *pgxpool.Pool
 	Mapper  *mappers.ExpenseMapper
 }
 
 func NewExpenseService(queries *psql.Queries, pool *pgxpool.Pool) *ExpenseService {
 	return &ExpenseService{
-		Queries: queries,
+		Queries: wrapExpenseQueries(queries),
 		Pool:    pool,
 		Mapper:  mappers.NewExpenseMapper(),
 	}

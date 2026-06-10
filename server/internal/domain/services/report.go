@@ -10,7 +10,7 @@ import (
 )
 
 type ReportService struct {
-	Queries        *psql.Queries
+	Queries        ReportQuerier
 	ExpenseMapper  *mappers.ExpenseMapper
 	CategoryMapper *mappers.CategoryMapper
 }
