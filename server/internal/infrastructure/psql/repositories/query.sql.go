@@ -147,19 +147,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
-const deleteUser = `-- name: DeleteUser :execrows
-DELETE FROM users
-WHERE id = $1
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, id int64) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteUser, id)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const getAllExpenses = `-- name: GetAllExpenses :many
 SELECT id, name, amount, cost, item_id, is_deleted, created_at, updated_at, recurrence_interval, recurrence_day, recurrence_start_date, user_id FROM expenses
 WHERE user_id=$1 AND is_deleted = false
@@ -501,7 +488,7 @@ func (q *Queries) GetTotalSpendThisMonth(ctx context.Context, userID int64) (pgt
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 LIMIT 1
+SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 AND is_deleted = false LIMIT 1
 `
 
 type GetUserByUsernameRow struct {
@@ -620,6 +607,21 @@ type SoftDeleteExpenseParams struct {
 
 func (q *Queries) SoftDeleteExpense(ctx context.Context, arg SoftDeleteExpenseParams) (int64, error) {
 	result, err := q.db.Exec(ctx, softDeleteExpense, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const softDeleteUser = `-- name: SoftDeleteUser :execrows
+UPDATE users
+SET is_deleted = true,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND is_deleted = false
+`
+
+func (q *Queries) SoftDeleteUser(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, softDeleteUser, id)
 	if err != nil {
 		return 0, err
 	}

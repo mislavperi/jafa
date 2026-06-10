@@ -124,15 +124,17 @@ ON CONFLICT (user_id) DO UPDATE
 RETURNING *;
 
 -- name: GetUserByUsername :one
-SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 LIMIT 1;
+SELECT id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at FROM users WHERE username = $1 AND is_deleted = false LIMIT 1;
 
 -- name: CreateUser :one
 INSERT INTO users (username, password, first_name, last_name, email) VALUES ($1, $2, $3, $4, $5)
 RETURNING id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at;
 
--- name: DeleteUser :execrows
-DELETE FROM users
-WHERE id = $1;
+-- name: SoftDeleteUser :execrows
+UPDATE users
+SET is_deleted = true,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1 AND is_deleted = false;
 
 -- name: UpsertTag :one
 INSERT INTO tags (name, user_id)

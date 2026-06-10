@@ -37,8 +37,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to hash password: %v", err)
 	}
+	// Username uniqueness is a partial index over active users, so the conflict
+	// target needs the matching predicate.
 	_, err = pool.Exec(ctx,
-		"INSERT INTO users (username, password) VALUES ($1, $2) ON CONFLICT (username) DO NOTHING",
+		"INSERT INTO users (username, password) VALUES ($1, $2) ON CONFLICT (username) WHERE is_deleted = false DO NOTHING",
 		"admin", string(hash),
 	)
 	if err != nil {
@@ -47,11 +49,11 @@ func main() {
 	fmt.Println("seeded user: admin / admin")
 
 	var adminUserID int64
-	if err := pool.QueryRow(ctx, "SELECT id FROM users WHERE username = $1", "admin").Scan(&adminUserID); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT id FROM users WHERE username = $1 AND is_deleted = false", "admin").Scan(&adminUserID); err != nil {
 		log.Fatalf("failed to fetch admin id: %v", err)
 	}
 	_, err = pool.Exec(ctx,
-		"UPDATE users SET avatar_url = $1, first_name = $2, last_name = $3, email = $4 WHERE username = 'admin'",
+		"UPDATE users SET avatar_url = $1, first_name = $2, last_name = $3, email = $4 WHERE username = 'admin' AND is_deleted = false",
 		"https://i.pravatar.cc/150?u=admin",
 		"Admin",
 		"User",

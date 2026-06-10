@@ -88,8 +88,8 @@ func (ac *AuthController) Me() gin.HandlerFunc {
 	}
 }
 
-// DeleteAccount permanently deletes the authenticated user and all of their
-// data (expenses, tags, preferences cascade in the database), then clears the
+// DeleteAccount soft-deletes the authenticated user (the account can no longer
+// log in; its data is kept in the database for recovery), then clears the
 // session.
 func (ac *AuthController) DeleteAccount() gin.HandlerFunc {
 	return func(ctx *gin.Context) {

@@ -37,10 +37,11 @@ func (as *AuthService) Login(username, password string) (models.User, error) {
 	return as.mapper.MapFromGetByUsername(row), nil
 }
 
-// DeleteAccount permanently removes the user row. Expenses, tags and
-// preferences are removed by the ON DELETE CASCADE constraints on user_id.
+// DeleteAccount soft-deletes the user: the row and the user's data stay in the
+// database for recovery, but the account can no longer log in and its username
+// is freed for re-registration (uniqueness only covers active users).
 func (as *AuthService) DeleteAccount(userID int64) error {
-	rows, err := as.Queries.DeleteUser(context.Background(), userID)
+	rows, err := as.Queries.SoftDeleteUser(context.Background(), userID)
 	if err != nil {
 		return err
 	}
