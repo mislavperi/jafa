@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
-import { login, logout, register } from '../api/auth'
+import { deleteAccount, login, logout, register } from '../api/auth'
 import { useAuthStore } from '@/stores/auth'
 import type { LoginRequest, RegisterRequest } from '../models/auth'
 
@@ -30,6 +30,21 @@ export function useLogout() {
     onSuccess: () => {
       authStore.clearUser()
       queryClient.removeQueries({ queryKey: ['auth'] })
+      router.push('/login')
+    },
+  })
+}
+
+export function useDeleteAccount() {
+  const authStore = useAuthStore()
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => {
+      authStore.clearUser()
+      queryClient.clear()
       router.push('/login')
     },
   })

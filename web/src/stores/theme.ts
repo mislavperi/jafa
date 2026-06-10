@@ -25,11 +25,18 @@ const FONT_SCALE: Record<FontSize, string> = {
   large: '1.15',
 }
 
+export type WeekStart = 'Monday' | 'Sunday' | 'Saturday'
+
 interface PrefsPayload {
   accentId: string
   fontSize: FontSize
   darkMode: boolean
   currency: string
+  weekStart: WeekStart
+  monthlyBudget: number
+  notifyWeeklySummary: boolean
+  notifyBudgetAlerts: boolean
+  notifyProductUpdates: boolean
 }
 
 import { apiFetch } from '@/core/api'
@@ -64,6 +71,11 @@ export const useThemeStore = defineStore('theme', () => {
   const accentId = ref('amber')
   const fontSize = ref<FontSize>('normal')
   const currency = ref('EUR')
+  const weekStart = ref<WeekStart>('Monday')
+  const monthlyBudget = ref(0)
+  const notifyWeeklySummary = ref(true)
+  const notifyBudgetAlerts = ref(true)
+  const notifyProductUpdates = ref(false)
   const loaded = ref(false)
   let suppressSave = false
 
@@ -91,6 +103,20 @@ export const useThemeStore = defineStore('theme', () => {
     currency.value = code
   }
 
+  function setWeekStart(day: WeekStart) {
+    weekStart.value = day
+  }
+
+  function setMonthlyBudget(amount: number) {
+    monthlyBudget.value = Math.max(0, amount)
+  }
+
+  function setNotification(key: 'weeklySummary' | 'budgetAlerts' | 'productUpdates', value: boolean) {
+    if (key === 'weeklySummary') notifyWeeklySummary.value = value
+    else if (key === 'budgetAlerts') notifyBudgetAlerts.value = value
+    else notifyProductUpdates.value = value
+  }
+
   async function load(isDark: boolean) {
     const prefs = await fetchPrefs()
     if (prefs) {
@@ -98,6 +124,11 @@ export const useThemeStore = defineStore('theme', () => {
       accentId.value = prefs.accentId
       fontSize.value = prefs.fontSize
       if (prefs.currency) currency.value = prefs.currency
+      if (prefs.weekStart) weekStart.value = prefs.weekStart
+      if (typeof prefs.monthlyBudget === 'number') monthlyBudget.value = prefs.monthlyBudget
+      if (typeof prefs.notifyWeeklySummary === 'boolean') notifyWeeklySummary.value = prefs.notifyWeeklySummary
+      if (typeof prefs.notifyBudgetAlerts === 'boolean') notifyBudgetAlerts.value = prefs.notifyBudgetAlerts
+      if (typeof prefs.notifyProductUpdates === 'boolean') notifyProductUpdates.value = prefs.notifyProductUpdates
       // Restore the saved dark-mode choice so it syncs across devices, not just
       // the value cached in localStorage.
       if (typeof prefs.darkMode === 'boolean') {
@@ -120,6 +151,11 @@ export const useThemeStore = defineStore('theme', () => {
       fontSize: fontSize.value,
       darkMode,
       currency: currency.value,
+      weekStart: weekStart.value,
+      monthlyBudget: monthlyBudget.value,
+      notifyWeeklySummary: notifyWeeklySummary.value,
+      notifyBudgetAlerts: notifyBudgetAlerts.value,
+      notifyProductUpdates: notifyProductUpdates.value,
     })
   }
 
@@ -133,10 +169,18 @@ export const useThemeStore = defineStore('theme', () => {
     accentId,
     fontSize,
     currency,
+    weekStart,
+    monthlyBudget,
+    notifyWeeklySummary,
+    notifyBudgetAlerts,
+    notifyProductUpdates,
     loaded,
     setAccent,
     setFontSize,
     setCurrency,
+    setWeekStart,
+    setMonthlyBudget,
+    setNotification,
     currentAccent,
     load,
     persist,

@@ -5,10 +5,13 @@ import AppPageHeader from '@/core/components/AppPageHeader.vue'
 import ToggleSwitch from 'primevue/toggleswitch'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
+import InputNumber from 'primevue/inputnumber'
+import Message from 'primevue/message'
 import { useAuthStore } from '@/stores/auth'
 import { useDarkModeStore } from '@/stores/darkMode'
-import { useThemeStore, ACCENTS, type FontSize } from '@/stores/theme'
-import { CURRENCY_OPTIONS } from '@/core/currency'
+import { useThemeStore, ACCENTS, type FontSize, type WeekStart } from '@/stores/theme'
+import { useDeleteAccount } from '@/modules/auth/composables/useAuth'
+import { CURRENCY_OPTIONS, currencySymbol } from '@/core/currency'
 
 const authStore = useAuthStore()
 
@@ -27,22 +30,36 @@ const displayName = computed(() => {
   return user.value?.username ?? ''
 })
 
-const weekStart = ref('Monday')
-
 const currencyOptions = CURRENCY_OPTIONS
-const weekOptions = ['Monday', 'Sunday', 'Saturday']
-
-const notifWeeklySummary = ref(true)
-const notifBudgetAlerts = ref(true)
-const notifProductUpdates = ref(false)
+const weekOptions: WeekStart[] = ['Monday', 'Sunday', 'Saturday']
 
 const darkMode = useDarkModeStore()
 const theme = useThemeStore()
+
+const cs = computed(() => currencySymbol(theme.currency))
 
 function setAccent(id: string) {
   theme.setAccent(id)
   theme.persist(darkMode.isDark)
 }
+
+function setWeekStart(day: WeekStart) {
+  theme.setWeekStart(day)
+  theme.persist(darkMode.isDark)
+}
+
+function setMonthlyBudget(amount: number | null) {
+  theme.setMonthlyBudget(amount ?? 0)
+  theme.persist(darkMode.isDark)
+}
+
+function setNotification(key: 'weeklySummary' | 'budgetAlerts' | 'productUpdates', value: boolean) {
+  theme.setNotification(key, value)
+  theme.persist(darkMode.isDark)
+}
+
+const confirmingDelete = ref(false)
+const { mutate: removeAccount, isPending: deletingAccount, error: deleteError } = useDeleteAccount()
 
 function setFontSize(size: FontSize) {
   theme.setFontSize(size)
@@ -177,7 +194,24 @@ const fontSizes: { label: string; value: FontSize }[] = [
             </div>
             <div class="flex flex-col gap-1.5">
               <label class="text-xs font-medium text-[var(--jafa-text-muted)] uppercase tracking-wider">Week starts on</label>
-              <Select v-model="weekStart" :options="weekOptions" class="w-full" />
+              <Select
+                :model-value="theme.weekStart"
+                :options="weekOptions"
+                class="w-full"
+                @update:model-value="setWeekStart"
+              />
+            </div>
+            <div class="flex flex-col gap-1.5 col-span-2">
+              <label class="text-xs font-medium text-[var(--jafa-text-muted)] uppercase tracking-wider">Monthly budget ({{ cs }})</label>
+              <InputNumber
+                :model-value="theme.monthlyBudget"
+                :min="0"
+                :max-fraction-digits="2"
+                placeholder="0 — no budget"
+                class="w-full"
+                @update:model-value="setMonthlyBudget"
+              />
+              <p class="text-[var(--jafa-text-muted)] text-xs">Used for the budget card and pace insight on the dashboard. Set to 0 to disable.</p>
             </div>
           </div>
         </div>
@@ -191,21 +225,21 @@ const fontSizes: { label: string; value: FontSize }[] = [
                 <p class="text-[var(--jafa-text)] text-sm font-medium">Weekly summary</p>
                 <p class="text-[var(--jafa-text-muted)] text-xs mt-0.5">Get a weekly overview of your spending</p>
               </div>
-              <ToggleSwitch v-model="notifWeeklySummary" />
+              <ToggleSwitch :model-value="theme.notifyWeeklySummary" @update:model-value="(v: boolean) => setNotification('weeklySummary', v)" />
             </div>
             <div class="flex items-center justify-between py-3">
               <div>
                 <p class="text-[var(--jafa-text)] text-sm font-medium">Budget alerts</p>
                 <p class="text-[var(--jafa-text-muted)] text-xs mt-0.5">Alert when you approach your budget limit</p>
               </div>
-              <ToggleSwitch v-model="notifBudgetAlerts" />
+              <ToggleSwitch :model-value="theme.notifyBudgetAlerts" @update:model-value="(v: boolean) => setNotification('budgetAlerts', v)" />
             </div>
             <div class="flex items-center justify-between py-3 last:pb-0">
               <div>
                 <p class="text-[var(--jafa-text)] text-sm font-medium">Product updates</p>
                 <p class="text-[var(--jafa-text-muted)] text-xs mt-0.5">Occasional news about new features</p>
               </div>
-              <ToggleSwitch v-model="notifProductUpdates" />
+              <ToggleSwitch :model-value="theme.notifyProductUpdates" @update:model-value="(v: boolean) => setNotification('productUpdates', v)" />
             </div>
           </div>
         </div>
@@ -218,7 +252,17 @@ const fontSizes: { label: string; value: FontSize }[] = [
               <p class="text-[var(--jafa-text)] text-sm font-medium">Delete account</p>
               <p class="text-[var(--jafa-text-muted)] text-xs mt-0.5">Permanently delete your account and all data</p>
             </div>
-            <Button label="Delete Account" severity="danger" size="small" outlined />
+            <Button v-if="!confirmingDelete" label="Delete Account" severity="danger" size="small" outlined @click="confirmingDelete = true" />
+          </div>
+          <div v-if="confirmingDelete" class="flex flex-col gap-3 border-t border-red-900/40 pt-4">
+            <p class="text-[var(--jafa-text)] text-sm">
+              This permanently deletes your account, all expenses, tags and preferences. This cannot be undone.
+            </p>
+            <Message v-if="deleteError" severity="error" :closable="false">{{ deleteError.message }}</Message>
+            <div class="flex gap-2 justify-end">
+              <Button label="Cancel" severity="secondary" size="small" :disabled="deletingAccount" @click="confirmingDelete = false" />
+              <Button label="Yes, delete everything" severity="danger" size="small" :loading="deletingAccount" @click="removeAccount()" />
+            </div>
           </div>
         </div>
 

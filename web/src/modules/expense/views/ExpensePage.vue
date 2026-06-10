@@ -79,11 +79,20 @@ const topCategory = computed(() => {
   return { name: top.name, amount: top.total, pct }
 })
 
+// Monthly budget comes from user preferences (set on the Settings page); 0
+// means no budget configured.
+const monthlyBudget = computed(() => theme.monthlyBudget)
+const budgetPctUsed = computed(() =>
+  monthlyBudget.value > 0 ? Math.round((currentTotal.value / monthlyBudget.value) * 100) : 0,
+)
+const budgetRemaining = computed(() => monthlyBudget.value - currentTotal.value)
+
 const dayOfMonth = now.getDate()
 const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
 const expectedSoFar = computed(() => {
-  // budget unknown from API — use last month as proxy
-  return lastMonthTotal.value ? (lastMonthTotal.value / daysInMonth) * dayOfMonth : 0
+  // Pace against the configured budget; fall back to last month as a proxy.
+  const reference = monthlyBudget.value > 0 ? monthlyBudget.value : lastMonthTotal.value
+  return reference ? (reference / daysInMonth) * dayOfMonth : 0
 })
 const onTrack = computed(() => currentTotal.value <= expectedSoFar.value)
 
@@ -190,8 +199,22 @@ function formatDate(d?: string) {
       <!-- Stat cards -->
       <div class="grid grid-cols-3 gap-4">
         <TotalSpendCard />
-        <AppStatCard label="Budget" icon="pi pi-chart-pie" tone="brand" subtitle="No budget set" />
-        <AppStatCard label="Savings" icon="pi pi-piggy-bank" tone="positive" subtitle="Track savings" />
+        <AppStatCard
+          label="Budget"
+          icon="pi pi-chart-pie"
+          tone="brand"
+          :value="monthlyBudget > 0 ? money(monthlyBudget) : undefined"
+          :subtitle="monthlyBudget > 0 ? `${budgetPctUsed}% used this month` : 'No budget set — add one in Settings'"
+        />
+        <AppStatCard
+          label="Left to spend"
+          icon="pi pi-piggy-bank"
+          :tone="monthlyBudget > 0 && budgetRemaining < 0 ? 'brand' : 'positive'"
+          :value="monthlyBudget > 0 ? money(Math.max(budgetRemaining, 0)) : undefined"
+          :subtitle="monthlyBudget > 0
+            ? (budgetRemaining >= 0 ? 'Remaining this month' : `${money(-budgetRemaining)} over budget`)
+            : 'Set a budget to track this'"
+        />
       </div>
 
       <!-- Insights strip -->

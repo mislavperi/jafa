@@ -20,6 +20,25 @@ export async function createExpense(payload: {
   return response.json()
 }
 
+export interface BulkExpenseItem {
+  name: string
+  amount: number
+  cost: number
+  tag?: string
+}
+
+export async function bulkCreateExpenses(items: BulkExpenseItem[]): Promise<Expense[]> {
+  const response = await apiFetch(`${BASE_URL}bulk`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ expenses: items }),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to import expenses')
+  }
+  return response.json()
+}
+
 export async function updateExpense(
   id: number,
   payload: {

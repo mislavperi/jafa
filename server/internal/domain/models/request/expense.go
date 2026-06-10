@@ -13,6 +13,17 @@ type CreateExpenseRequest struct {
 	RecurringSchedule *RecurringScheduleRequest `json:"recurringSchedule,omitempty"`
 }
 
+type BulkExpenseItemRequest struct {
+	Name   string   `json:"name" binding:"required"`
+	Amount *float32 `json:"amount" binding:"required"`
+	Cost   *float32 `json:"cost" binding:"required"`
+	Tag    string   `json:"tag"`
+}
+
+type BulkCreateExpensesRequest struct {
+	Expenses []BulkExpenseItemRequest `json:"expenses" binding:"required,min=1,max=200,dive"`
+}
+
 type UpdateExpenseRequest struct {
 	Name              string                    `json:"name" binding:"required"`
 	Amount            *float32                  `json:"amount" binding:"required"`

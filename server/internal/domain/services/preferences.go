@@ -18,6 +18,27 @@ func NewPreferencesService(queries *psql.Queries) *PreferencesService {
 	return &PreferencesService{Queries: queries}
 }
 
+func mapPreferencesRow(row psql.UserPreference) (models.UserPreferences, error) {
+	budget, err := utils.NumericToFloat(row.MonthlyBudget)
+	if err != nil {
+		return models.UserPreferences{}, err
+	}
+	return models.UserPreferences{
+		UserID:               row.UserID,
+		AccentID:             row.AccentID,
+		FontSize:             row.FontSize,
+		DarkMode:             row.DarkMode,
+		Currency:             row.Currency,
+		WeekStart:            row.WeekStart,
+		MonthlyBudget:        budget,
+		NotifyWeeklySummary:  row.NotifyWeeklySummary,
+		NotifyBudgetAlerts:   row.NotifyBudgetAlerts,
+		NotifyProductUpdates: row.NotifyProductUpdates,
+		CreatedAt:            utils.FormatRFC3339(row.CreatedAt),
+		UpdatedAt:            utils.FormatRFC3339(row.UpdatedAt),
+	}, nil
+}
+
 func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) {
 	row, err := ps.Queries.GetUserPreferences(context.Background(), userID)
 	if err != nil {
@@ -26,35 +47,28 @@ func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) 
 		}
 		return models.UserPreferences{}, err
 	}
-	return models.UserPreferences{
-		UserID:    row.UserID,
-		AccentID:  row.AccentID,
-		FontSize:  row.FontSize,
-		DarkMode:  row.DarkMode,
-		Currency:  row.Currency,
-		CreatedAt: utils.FormatRFC3339(row.CreatedAt),
-		UpdatedAt: utils.FormatRFC3339(row.UpdatedAt),
-	}, nil
+	return mapPreferencesRow(row)
 }
 
 func (ps *PreferencesService) Upsert(input models.UpsertPreferencesInput) (models.UserPreferences, error) {
+	budget, err := utils.FloatToNumeric(input.MonthlyBudget)
+	if err != nil {
+		return models.UserPreferences{}, err
+	}
 	row, err := ps.Queries.UpsertUserPreferences(context.Background(), psql.UpsertUserPreferencesParams{
-		UserID:   input.UserID,
-		AccentID: input.AccentID,
-		FontSize: input.FontSize,
-		DarkMode: input.DarkMode,
-		Currency: input.Currency,
+		UserID:               input.UserID,
+		AccentID:             input.AccentID,
+		FontSize:             input.FontSize,
+		DarkMode:             input.DarkMode,
+		Currency:             input.Currency,
+		WeekStart:            input.WeekStart,
+		MonthlyBudget:        budget,
+		NotifyWeeklySummary:  input.NotifyWeeklySummary,
+		NotifyBudgetAlerts:   input.NotifyBudgetAlerts,
+		NotifyProductUpdates: input.NotifyProductUpdates,
 	})
 	if err != nil {
 		return models.UserPreferences{}, err
 	}
-	return models.UserPreferences{
-		UserID:    row.UserID,
-		AccentID:  row.AccentID,
-		FontSize:  row.FontSize,
-		DarkMode:  row.DarkMode,
-		Currency:  row.Currency,
-		CreatedAt: utils.FormatRFC3339(row.CreatedAt),
-		UpdatedAt: utils.FormatRFC3339(row.UpdatedAt),
-	}, nil
+	return mapPreferencesRow(row)
 }
