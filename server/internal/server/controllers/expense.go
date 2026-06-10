@@ -70,6 +70,37 @@ func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 	}
 }
 
+// BulkCreateExpenses imports several expenses at once (used by the receipt
+// scanner). All items are created in a single transaction.
+func (ec *ExpenseController) BulkCreateExpenses() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, ok := requireUser(ctx)
+		if !ok {
+			return
+		}
+		var req requestmodels.BulkCreateExpensesRequest
+		if err := ctx.ShouldBindJSON(&req); err != nil {
+			httperr.BadRequest(ctx, err.Error(), err)
+			return
+		}
+		items := make([]services.BulkExpenseItem, 0, len(req.Expenses))
+		for _, e := range req.Expenses {
+			items = append(items, services.BulkExpenseItem{
+				Name:   e.Name,
+				Amount: *e.Amount,
+				Cost:   *e.Cost,
+				Tag:    e.Tag,
+			})
+		}
+		expenses, err := ec.expenseService.BulkCreateExpenses(uid, items)
+		if err != nil {
+			httperr.Internal(ctx, err)
+			return
+		}
+		ctx.JSON(http.StatusCreated, expenses)
+	}
+}
+
 func (ec *ExpenseController) GetAllExpenses() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		uid, ok := requireUser(ctx)

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
-import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend, getFirstExpenseDate, getDailySpendForMonth, getExpensesByMonth, createExpense, updateExpense, deleteExpense } from '../api/expense'
+import { getAllExpenses, getExpenseById, getMonthlyTotal, getDailySpend, getFirstExpenseDate, getDailySpendForMonth, getExpensesByMonth, createExpense, bulkCreateExpenses, updateExpense, deleteExpense } from '../api/expense'
 import type { RecurringSchedule } from '../models/expense'
 import type { Ref } from 'vue'
 
@@ -58,6 +58,17 @@ export function useCreateExpense() {
     mutationFn: createExpense,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
+    },
+  })
+}
+
+export function useBulkCreateExpenses() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: bulkCreateExpenses,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      queryClient.invalidateQueries({ queryKey: ['tags'] })
     },
   })
 }

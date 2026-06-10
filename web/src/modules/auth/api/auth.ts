@@ -15,6 +15,17 @@ export async function login(payload: LoginRequest): Promise<User> {
   return response.json()
 }
 
+export async function deleteAccount(): Promise<void> {
+  const response = await fetch(`${AUTH_API}/account`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}))
+    throw new Error(data.error ?? 'Failed to delete account')
+  }
+}
+
 export async function logout(): Promise<void> {
   const response = await fetch(`${AUTH_API}/logout`, {
     method: 'POST',

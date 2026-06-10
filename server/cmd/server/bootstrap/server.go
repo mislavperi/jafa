@@ -22,7 +22,7 @@ func Server() *server.Server {
 
 	queries := psqlrepositories.New(connPool)
 
-	expenseService := services.NewExpenseService(queries)
+	expenseService := services.NewExpenseService(queries, connPool)
 	tagService := services.NewTagService(queries)
 	authService := services.NewAuthService(queries)
 	preferencesService := services.NewPreferencesService(queries)

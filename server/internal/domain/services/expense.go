@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
@@ -18,12 +19,14 @@ var ErrExpenseNotFound = errors.New("expense not found")
 
 type ExpenseService struct {
 	Queries *psql.Queries
+	Pool    *pgxpool.Pool
 	Mapper  *mappers.ExpenseMapper
 }
 
-func NewExpenseService(queries *psql.Queries) *ExpenseService {
+func NewExpenseService(queries *psql.Queries, pool *pgxpool.Pool) *ExpenseService {
 	return &ExpenseService{
 		Queries: queries,
+		Pool:    pool,
 		Mapper:  mappers.NewExpenseMapper(),
 	}
 }
@@ -157,6 +160,74 @@ func (es *ExpenseService) CreateExpense(input CreateExpenseInput) (models.Expens
 		return models.Expense{}, err
 	}
 	return es.Mapper.MapToDomain(expense)
+}
+
+// BulkExpenseItem is one expense in a bulk import (e.g. a receipt line item).
+// Tag is optional; when set, the tag is created if it does not exist yet and
+// linked to the new expense.
+type BulkExpenseItem struct {
+	Name   string
+	Amount float32
+	Cost   float32
+	Tag    string
+}
+
+// BulkCreateExpenses creates all items (and their tag links) in one
+// transaction, so a receipt import either fully succeeds or leaves no trace.
+func (es *ExpenseService) BulkCreateExpenses(userID int64, items []BulkExpenseItem) ([]models.Expense, error) {
+	ctx := context.Background()
+	tx, err := es.Pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+	qtx := es.Queries.WithTx(tx)
+
+	created := make([]models.Expense, 0, len(items))
+	for _, item := range items {
+		amount, err := utils.FloatToNumeric(item.Amount)
+		if err != nil {
+			return nil, err
+		}
+		cost, err := utils.FloatToNumeric(item.Cost)
+		if err != nil {
+			return nil, err
+		}
+		row, err := qtx.CreateExpense(ctx, psql.CreateExpenseParams{
+			UserID: userID,
+			Name:   item.Name,
+			Amount: amount,
+			Cost:   cost,
+		})
+		if err != nil {
+			return nil, err
+		}
+		if item.Tag != "" {
+			tag, err := qtx.UpsertTag(ctx, psql.UpsertTagParams{
+				Name:   item.Tag,
+				UserID: userID,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if err := qtx.AddTagToExpense(ctx, psql.AddTagToExpenseParams{
+				ExpenseID: row.ID,
+				TagID:     tag.ID,
+				UserID:    userID,
+			}); err != nil {
+				return nil, err
+			}
+		}
+		expense, err := es.Mapper.MapToDomain(row)
+		if err != nil {
+			return nil, err
+		}
+		created = append(created, expense)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return created, nil
 }
 
 type UpdateExpenseInput struct {

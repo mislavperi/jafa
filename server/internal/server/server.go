@@ -73,6 +73,7 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	authGroup.POST("/logout", authController.Logout())
 	authGroup.POST("/register", authController.Register())
 	authGroup.GET("/me", authController.Me())
+	authGroup.DELETE("/account", authController.DeleteAccount())
 
 	protected := s.Gin.Group("/")
 	protected.Use(middleware.RequireAuth())
@@ -80,6 +81,7 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 	expenseGroup := protected.Group("/expense")
 	expenseGroup.GET("/", expenseController.GetAllExpenses())
 	expenseGroup.POST("/", expenseController.CreateExpense())
+	expenseGroup.POST("/bulk", expenseController.BulkCreateExpenses())
 	expenseGroup.GET("/:id", expenseController.GetExpenseById())
 	expenseGroup.PATCH("/:id", expenseController.UpdateExpense())
 	expenseGroup.DELETE("/:id", expenseController.DeleteExpense())

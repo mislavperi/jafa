@@ -7,9 +7,8 @@ import Select from 'primevue/select'
 import Checkbox from 'primevue/checkbox'
 import Message from 'primevue/message'
 import InputText from 'primevue/inputtext'
-import { useCreateExpense } from '../composables/useExpenses'
-import { useAllTags, useCreateTag, useAddTagToExpense } from '../composables/useTags'
-import type { Tag } from '../models/expense'
+import { useBulkCreateExpenses } from '../composables/useExpenses'
+import { useAllTags } from '../composables/useTags'
 import type { ScanStep, Sample, ReviewItem } from '../models/receiptScan'
 import { SAMPLES, CATEGORY_HINTS, guessCategory } from '../constants/receiptSamples'
 import { TAG_COLORS, tagColor } from '../constants'
@@ -37,10 +36,8 @@ const sumTag = ref('')
 // never present fabricated line items as if they were read from the user's image.
 const liveScanUnavailable = ref(false)
 
-const { mutateAsync: createExpense } = useCreateExpense()
+const { mutateAsync: bulkCreate } = useBulkCreateExpenses()
 const { data: allTags } = useAllTags()
-const { mutateAsync: createTag } = useCreateTag()
-const { mutateAsync: addTag } = useAddTagToExpense()
 
 function reset() {
   step.value = 'upload'
@@ -156,60 +153,38 @@ function switchToSum() {
   sumTag.value = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? ''
 }
 
-async function ensureTag(name: string): Promise<Tag> {
-  const existing = (allTags.value ?? []).find((t) => t.name.toLowerCase() === name.toLowerCase())
-  if (existing) return existing
-  return await createTag(name)
-}
-
 async function commit() {
   if (!parsed.value || includedItems.value.length === 0) return
   submitting.value = true
   submitError.value = null
 
-  if (importMode.value === 'sum') {
-    try {
-      const name = sumName.value.trim() || parsed.value.merchant
-      const expense = await createExpense({ name, amount: 1, cost: includedTotal.value })
-      if (sumTag.value) {
-        try {
-          const tag = await ensureTag(sumTag.value)
-          await addTag({ expenseId: expense.id, tagId: tag.id })
-        } catch { /* tag failure non-blocking */ }
-      }
-      submitting.value = false
-      close()
-    } catch {
-      submitting.value = false
-      submitError.value = 'Failed to import expense'
-    }
-    return
-  }
+  // The bulk endpoint creates all expenses and tag links in one transaction,
+  // so the import either fully succeeds or nothing is saved.
+  const items =
+    importMode.value === 'sum'
+      ? [
+          {
+            name: sumName.value.trim() || parsed.value.merchant,
+            amount: 1,
+            cost: includedTotal.value,
+            tag: sumTag.value || undefined,
+          },
+        ]
+      : includedItems.value.map((it) => ({
+          name: it.name,
+          amount: 1,
+          cost: it.amount,
+          tag: it.finalTag || undefined,
+        }))
 
-  const failed: string[] = []
-  for (const it of includedItems.value) {
-    try {
-      const expense = await createExpense({ name: it.name, amount: 1, cost: it.amount })
-      try {
-        const tag = await ensureTag(it.finalTag)
-        await addTag({ expenseId: expense.id, tagId: tag.id })
-      } catch {
-        // tag failure shouldn't block expense creation
-      }
-    } catch {
-      failed.push(it.name)
-    }
+  try {
+    await bulkCreate(items)
+    submitting.value = false
+    close()
+  } catch {
+    submitting.value = false
+    submitError.value = importMode.value === 'sum' ? 'Failed to import expense' : 'Failed to import items'
   }
-  submitting.value = false
-  if (failed.length === includedItems.value.length) {
-    submitError.value = 'Failed to import items'
-    return
-  }
-  if (failed.length) {
-    submitError.value = `Imported ${includedItems.value.length - failed.length}/${includedItems.value.length}. Failed: ${failed.join(', ')}`
-    return
-  }
-  close()
 }
 
 function fmt(n: number) {

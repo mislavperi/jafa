@@ -108,13 +108,18 @@ ORDER BY day;
 SELECT * FROM user_preferences WHERE user_id = $1 LIMIT 1;
 
 -- name: UpsertUserPreferences :one
-INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode, currency)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO user_preferences (user_id, accent_id, font_size, dark_mode, currency, week_start, monthly_budget, notify_weekly_summary, notify_budget_alerts, notify_product_updates)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 ON CONFLICT (user_id) DO UPDATE
   SET accent_id = EXCLUDED.accent_id,
       font_size = EXCLUDED.font_size,
       dark_mode = EXCLUDED.dark_mode,
       currency = EXCLUDED.currency,
+      week_start = EXCLUDED.week_start,
+      monthly_budget = EXCLUDED.monthly_budget,
+      notify_weekly_summary = EXCLUDED.notify_weekly_summary,
+      notify_budget_alerts = EXCLUDED.notify_budget_alerts,
+      notify_product_updates = EXCLUDED.notify_product_updates,
       updated_at = NOW()
 RETURNING *;
 
@@ -124,6 +129,18 @@ SELECT id, username, password, avatar_url, first_name, last_name, email, created
 -- name: CreateUser :one
 INSERT INTO users (username, password, first_name, last_name, email) VALUES ($1, $2, $3, $4, $5)
 RETURNING id, username, password, avatar_url, first_name, last_name, email, created_at, updated_at;
+
+-- name: DeleteUser :execrows
+DELETE FROM users
+WHERE id = $1;
+
+-- name: UpsertTag :one
+INSERT INTO tags (name, user_id)
+VALUES ($1, $2)
+ON CONFLICT (user_id, name) DO UPDATE
+  SET is_deleted = false,
+      updated_at = NOW()
+RETURNING *;
 
 -- name: ListCategories :many
 SELECT * FROM categories ORDER BY sort_order;

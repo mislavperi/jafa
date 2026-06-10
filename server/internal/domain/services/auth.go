@@ -37,6 +37,19 @@ func (as *AuthService) Login(username, password string) (models.User, error) {
 	return as.mapper.MapFromGetByUsername(row), nil
 }
 
+// DeleteAccount permanently removes the user row. Expenses, tags and
+// preferences are removed by the ON DELETE CASCADE constraints on user_id.
+func (as *AuthService) DeleteAccount(userID int64) error {
+	rows, err := as.Queries.DeleteUser(context.Background(), userID)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return customerrors.ErrUserNotFound
+	}
+	return nil
+}
+
 func (as *AuthService) Register(params requestmodels.RegisterRequest) (models.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
 	if err != nil {

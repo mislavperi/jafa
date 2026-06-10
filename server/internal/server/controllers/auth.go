@@ -88,6 +88,35 @@ func (ac *AuthController) Me() gin.HandlerFunc {
 	}
 }
 
+// DeleteAccount permanently deletes the authenticated user and all of their
+// data (expenses, tags, preferences cascade in the database), then clears the
+// session.
+func (ac *AuthController) DeleteAccount() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		session := sessions.Default(ctx)
+		userID, ok := session.Get(middleware.SessionUserIDKey).(int64)
+		if !ok {
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+			return
+		}
+		if err := ac.authService.DeleteAccount(userID); err != nil {
+			if errors.Is(err, customerrors.ErrUserNotFound) {
+				ctx.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+				return
+			}
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			return
+		}
+		session.Clear()
+		session.Options(sessions.Options{MaxAge: -1})
+		if err := session.Save(); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear session"})
+			return
+		}
+		ctx.JSON(http.StatusOK, gin.H{"message": "account deleted"})
+	}
+}
+
 func (ac *AuthController) Register() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requestmodels.RegisterRequest
