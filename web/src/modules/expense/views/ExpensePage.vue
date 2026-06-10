@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Chart from 'primevue/chart'
 import Root from '@/core/views/Root.vue'
@@ -13,6 +13,7 @@ import ExpenseTagsCell from '../components/ExpenseTagsCell.vue'
 import { useExpenses, useExpensesByMonth, useMonthlyTotal, useDeleteExpense } from '../composables/useExpenses'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useThemeStore } from '@/stores/theme'
+import { useOnboardingStore } from '@/stores/onboarding'
 import { currencySymbol, formatCurrency } from '@/core/currency'
 import type { Expense } from '../models/expense'
 
@@ -22,6 +23,11 @@ const theme = useThemeStore()
 const cs = computed(() => currencySymbol(theme.currency))
 const money = (v: number) => formatCurrency(v, theme.currency)
 const surfaceColor = computed(() => (darkMode.isDark ? '#131316' : '#ffffff'))
+
+// First visit to the dashboard kicks off the onboarding tour (no-op once
+// the user has finished or skipped it).
+const onboarding = useOnboardingStore()
+onMounted(() => onboarding.maybeStart())
 
 const showModal = ref(false)
 const showScanner = ref(false)
@@ -192,12 +198,12 @@ function formatDate(d?: string) {
   <Root>
     <div class="flex flex-col gap-5 h-full min-w-0 p-8 overflow-auto">
       <AppPageHeader title="Dashboard" subtitle="Your spending at a glance">
-        <Button label="Scan Receipt" icon="pi pi-receipt" size="small" severity="secondary" @click="showScanner = true" />
-        <Button label="Add Expense" icon="pi pi-plus" size="small" @click="showModal = true" />
+        <Button label="Scan Receipt" icon="pi pi-receipt" size="small" severity="secondary" data-tour="scan-receipt" @click="showScanner = true" />
+        <Button label="Add Expense" icon="pi pi-plus" size="small" data-tour="add-expense" @click="showModal = true" />
       </AppPageHeader>
 
       <!-- Stat cards -->
-      <div class="grid grid-cols-3 gap-4">
+      <div class="grid grid-cols-3 gap-4" data-tour="stat-cards">
         <TotalSpendCard />
         <AppStatCard
           label="Budget"
@@ -244,7 +250,7 @@ function formatDate(d?: string) {
       <!-- Main grid: recent expenses + breakdown -->
       <div class="grid grid-cols-[1.4fr_1fr] gap-5">
         <!-- Recent expenses -->
-        <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5">
+        <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5" data-tour="recent-expenses">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em] text-[var(--jafa-text-muted)]">Recent Expenses</h2>
             <RouterLink to="/expenses" class="text-[calc(12px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)] flex items-center gap-1">
@@ -307,7 +313,7 @@ function formatDate(d?: string) {
         </div>
 
         <!-- Expense breakdown pie chart -->
-        <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5 flex flex-col gap-4">
+        <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5 flex flex-col gap-4" data-tour="breakdown">
           <h2 class="text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em] text-[var(--jafa-text-muted)]">Expense Breakdown</h2>
           <template v-if="currentMonthExpenses?.length">
             <div class="relative h-[200px]">
@@ -361,7 +367,7 @@ function formatDate(d?: string) {
         <DailySpendChart />
 
         <!-- Upcoming bills -->
-        <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5 flex flex-col">
+        <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5 flex flex-col" data-tour="upcoming-bills">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em] text-[var(--jafa-text-muted)]">Upcoming Bills</h2>
             <RouterLink to="/expenses" class="text-[calc(12px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)]">Manage</RouterLink>
