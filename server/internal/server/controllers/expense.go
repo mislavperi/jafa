@@ -18,10 +18,10 @@ type firstExpenseDateResponse struct {
 }
 
 type ExpenseController struct {
-	expenseService *services.ExpenseService
+	expenseService services.ExpenseServicer
 }
 
-func NewExpenseController(expenseService *services.ExpenseService) *ExpenseController {
+func NewExpenseController(expenseService services.ExpenseServicer) *ExpenseController {
 	return &ExpenseController{
 		expenseService: expenseService,
 	}
