@@ -30,12 +30,12 @@ const menuItems = ref([
   },
 ])
 
-const navItems = [
+const navItems: { icon: string; label: string; to: string; tour?: string }[] = [
   { icon: 'pi pi-th-large', label: 'Dashboard', to: '/' },
   { icon: 'pi pi-list', label: 'Expenses', to: '/expenses' },
   { icon: 'pi pi-chart-bar', label: 'Reports', to: '/reports' },
   { icon: 'pi pi-tags', label: 'Categories', to: '/categories' },
-  { icon: 'pi pi-cog', label: 'Settings', to: '/settings' },
+  { icon: 'pi pi-cog', label: 'Settings', to: '/settings', tour: 'nav-settings' },
 ]
 
 function isActive(to: string) {
@@ -63,11 +63,12 @@ function toggleMenu(event: Event) {
     </div>
 
     <!-- Nav items -->
-    <div class="flex flex-col gap-0.5 px-3 mt-1 flex-1">
+    <div class="flex flex-col gap-0.5 px-3 mt-1 flex-1" data-tour="nav">
       <RouterLink
         v-for="item in navItems"
         :key="item.label"
         :to="item.to"
+        :data-tour="item.tour"
         class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[calc(13px*var(--jafa-text-scale,1))] whitespace-nowrap"
         :class="[
           isActive(item.to)

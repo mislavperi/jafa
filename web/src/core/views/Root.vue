@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SideBar from '@/core/components/SideBar.vue'
+import OnboardingTour from '@/core/components/OnboardingTour.vue'
 
 defineOptions({ name: 'AppRoot' })
 </script>
@@ -10,5 +11,6 @@ defineOptions({ name: 'AppRoot' })
     <div class="flex-1 min-w-0 overflow-hidden bg-[var(--jafa-bg)]">
       <slot />
     </div>
+    <OnboardingTour />
   </div>
 </template>

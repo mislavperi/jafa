@@ -7,9 +7,11 @@ import Select from 'primevue/select'
 import Button from 'primevue/button'
 import InputNumber from 'primevue/inputnumber'
 import Message from 'primevue/message'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useThemeStore, ACCENTS, type FontSize, type WeekStart } from '@/stores/theme'
+import { useOnboardingStore } from '@/stores/onboarding'
 import { useDeleteAccount } from '@/modules/auth/composables/useAuth'
 import { CURRENCY_OPTIONS, currencySymbol } from '@/core/currency'
 
@@ -81,6 +83,15 @@ const fontSizes: { label: string; value: FontSize }[] = [
   { label: 'Normal', value: 'normal' },
   { label: 'Large', value: 'large' },
 ]
+
+const onboarding = useOnboardingStore()
+const router = useRouter()
+
+// The tour highlights dashboard elements, so go there before starting it.
+async function replayTour() {
+  await router.push('/')
+  onboarding.start()
+}
 </script>
 
 <template>
@@ -213,6 +224,13 @@ const fontSizes: { label: string; value: FontSize }[] = [
               />
               <p class="text-[var(--jafa-text-muted)] text-xs">Used for the budget card and pace insight on the dashboard. Set to 0 to disable.</p>
             </div>
+          </div>
+          <div class="flex items-center justify-between border-t border-[var(--jafa-border)] pt-4">
+            <div>
+              <p class="text-[var(--jafa-text)] text-sm font-medium">App tour</p>
+              <p class="text-[var(--jafa-text-muted)] text-xs mt-0.5">Replay the welcome walkthrough of the dashboard</p>
+            </div>
+            <Button label="Replay Tour" icon="pi pi-compass" size="small" severity="secondary" @click="replayTour" />
           </div>
         </div>
 
