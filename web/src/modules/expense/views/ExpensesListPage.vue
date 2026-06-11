@@ -14,7 +14,7 @@ const showScanner = ref(false)
     <div class="flex flex-col gap-5 h-full min-w-0 p-8 overflow-auto">
       <AppPageHeader title="Expenses" subtitle="All your transactions">
         <Button label="Scan Receipt" icon="pi pi-receipt" size="small" severity="secondary" @click="showScanner = true" />
-        <Button label="Add Expense" icon="pi pi-plus" size="small" @click="showModal = true" />
+        <Button data-testid="add-expense-btn" label="Add Expense" icon="pi pi-plus" size="small" @click="showModal = true" />
       </AppPageHeader>
       <LatestSpends class="flex-1 min-h-0" />
       <AddExpenseModal v-model:visible="showModal" />

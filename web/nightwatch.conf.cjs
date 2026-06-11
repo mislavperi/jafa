@@ -105,15 +105,11 @@ module.exports = {
       desiredCapabilities: {
         browserName: 'chrome',
         'goog:chromeOptions': {
-          // More info on Chromedriver: https://sites.google.com/a/chromium.org/chromedriver/
-          //
-          // w3c:false tells Chromedriver to run using the legacy JSONWire protocol (not required in Chrome 78)
           w3c: true,
           args: [
-            //'--no-sandbox',
-            //'--ignore-certificate-errors',
-            //'--allow-insecure-localhost',
-            //'--headless'
+            '--no-sandbox',
+            '--ignore-certificate-errors',
+            '--allow-insecure-localhost',
           ],
         },
       },
@@ -121,9 +117,23 @@ module.exports = {
       webdriver: {
         start_process: true,
         server_path: '',
-        cli_args: [
-          // --verbose
-        ],
+      },
+    },
+
+    'chrome.headless': {
+      extends: 'chrome',
+      desiredCapabilities: {
+        browserName: 'chrome',
+        'goog:chromeOptions': {
+          w3c: true,
+          args: [
+            '--headless=new',
+            '--no-sandbox',
+            '--disable-gpu',
+            '--ignore-certificate-errors',
+            '--allow-insecure-localhost',
+          ],
+        },
       },
     },
 
