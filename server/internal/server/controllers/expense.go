@@ -55,7 +55,7 @@ func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 				StartDate:  req.RecurringSchedule.StartDate,
 			}
 		}
-		expense, err := ec.expenseService.CreateExpense(services.CreateExpenseInput{
+		expense, err := ec.expenseService.CreateExpense(ctx.Request.Context(), services.CreateExpenseInput{
 			UserID:            uid,
 			Name:              req.Name,
 			Amount:            *req.Amount,
@@ -63,6 +63,10 @@ func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 			RecurringSchedule: recurringSchedule,
 		})
 		if err != nil {
+			if errors.Is(err, services.ErrInvalidStartDate) {
+				httperr.BadRequest(ctx, err.Error(), err)
+				return
+			}
 			httperr.Internal(ctx, err)
 			return
 		}
@@ -92,7 +96,7 @@ func (ec *ExpenseController) BulkCreateExpenses() gin.HandlerFunc {
 				Tag:    e.Tag,
 			})
 		}
-		expenses, err := ec.expenseService.BulkCreateExpenses(uid, items)
+		expenses, err := ec.expenseService.BulkCreateExpenses(ctx.Request.Context(), uid, items)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -107,7 +111,7 @@ func (ec *ExpenseController) GetAllExpenses() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		expenses, err := ec.expenseService.GetAllExpenses(uid)
+		expenses, err := ec.expenseService.GetAllExpenses(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -122,7 +126,7 @@ func (ec *ExpenseController) GetTotalSpendThisMonth() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		total, err := ec.expenseService.GetTotalSpendThisMonth(uid)
+		total, err := ec.expenseService.GetTotalSpendThisMonth(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -142,7 +146,7 @@ func (ec *ExpenseController) GetDailySpend() gin.HandlerFunc {
 			httperr.BadRequest(ctx, "invalid request", err)
 			return
 		}
-		dailySpend, err := ec.expenseService.GetDailySpend(uid, int32(v))
+		dailySpend, err := ec.expenseService.GetDailySpend(ctx.Request.Context(), uid, int32(v))
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -157,7 +161,7 @@ func (ec *ExpenseController) GetFirstExpenseDate() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		date, err := ec.expenseService.GetFirstExpenseDate(uid)
+		date, err := ec.expenseService.GetFirstExpenseDate(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -182,7 +186,7 @@ func (ec *ExpenseController) GetDailySpendForMonth() gin.HandlerFunc {
 			httperr.BadRequest(ctx, "invalid request", err)
 			return
 		}
-		dailySpend, err := ec.expenseService.GetDailySpendForMonth(uid, int32(year), int32(month))
+		dailySpend, err := ec.expenseService.GetDailySpendForMonth(ctx.Request.Context(), uid, int32(year), int32(month))
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -207,7 +211,7 @@ func (ec *ExpenseController) GetExpensesByMonth() gin.HandlerFunc {
 			httperr.BadRequest(ctx, "invalid request", err)
 			return
 		}
-		expenses, err := ec.expenseService.GetExpensesByMonth(uid, int32(year), int32(month))
+		expenses, err := ec.expenseService.GetExpensesByMonth(ctx.Request.Context(), uid, int32(year), int32(month))
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -240,7 +244,7 @@ func (ec *ExpenseController) UpdateExpense() gin.HandlerFunc {
 				StartDate:  req.RecurringSchedule.StartDate,
 			}
 		}
-		expense, err := ec.expenseService.UpdateExpense(services.UpdateExpenseInput{
+		expense, err := ec.expenseService.UpdateExpense(ctx.Request.Context(), services.UpdateExpenseInput{
 			ID:                int64(id),
 			UserID:            uid,
 			Name:              req.Name,
@@ -251,6 +255,10 @@ func (ec *ExpenseController) UpdateExpense() gin.HandlerFunc {
 		if err != nil {
 			if errors.Is(err, services.ErrExpenseNotFound) {
 				httperr.NotFound(ctx, "expense not found")
+				return
+			}
+			if errors.Is(err, services.ErrInvalidStartDate) {
+				httperr.BadRequest(ctx, err.Error(), err)
 				return
 			}
 			httperr.Internal(ctx, err)
@@ -271,7 +279,7 @@ func (ec *ExpenseController) DeleteExpense() gin.HandlerFunc {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
-		if err := ec.expenseService.DeleteExpense(uid, int64(id)); err != nil {
+		if err := ec.expenseService.DeleteExpense(ctx.Request.Context(), uid, int64(id)); err != nil {
 			if errors.Is(err, services.ErrExpenseNotFound) {
 				httperr.NotFound(ctx, "expense not found")
 				return
@@ -294,7 +302,7 @@ func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 			httperr.BadRequest(ctx, "invalid request", err)
 			return
 		}
-		expense, err := ec.expenseService.GetById(uid, int64(id))
+		expense, err := ec.expenseService.GetById(ctx.Request.Context(), uid, int64(id))
 		if err != nil {
 			if errors.Is(err, services.ErrExpenseNotFound) {
 				httperr.NotFound(ctx, "expense not found")

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { login, logout, register, deleteAccount } from '@/modules/auth/api/auth'
 
 // auth.ts calls fetch directly (not apiFetch) for login/logout/register/deleteAccount

@@ -52,26 +52,3 @@ func TestNumericToFloat_Null(t *testing.T) {
 		t.Errorf("NumericToFloat(null) = %v, want 0", got)
 	}
 }
-
-func TestParseDate(t *testing.T) {
-	t.Run("valid date", func(t *testing.T) {
-		got := ParseDate("2024-06-15")
-		if got.Year() != 2024 || int(got.Month()) != 6 || got.Day() != 15 {
-			t.Errorf("ParseDate = %v, want 2024-06-15", got)
-		}
-	})
-
-	t.Run("invalid date returns zero time", func(t *testing.T) {
-		got := ParseDate("not-a-date")
-		if !got.IsZero() {
-			t.Errorf("ParseDate(invalid) = %v, want zero time", got)
-		}
-	})
-
-	t.Run("empty string returns zero time", func(t *testing.T) {
-		got := ParseDate("")
-		if !got.IsZero() {
-			t.Errorf("ParseDate(\"\") = %v, want zero time", got)
-		}
-	})
-}

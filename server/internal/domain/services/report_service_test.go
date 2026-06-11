@@ -13,7 +13,7 @@ import (
 
 type stubReportQuerier struct {
 	listCategoriesFn  func(ctx context.Context) ([]psql.Category, error)
-	getAllExpensesFn   func(ctx context.Context, userID int64) ([]psql.Expense, error)
+	getAllExpensesFn  func(ctx context.Context, userID int64) ([]psql.Expense, error)
 	getMonthlySpendFn func(ctx context.Context, userID int64) ([]psql.GetMonthlySpendRow, error)
 }
 
@@ -74,7 +74,7 @@ func TestCategoryBreakdown_SpendAndPct(t *testing.T) {
 		},
 	}
 	svc := newReportServiceWithStub(stub)
-	breakdown, err := svc.CategoryBreakdown(1)
+	breakdown, err := svc.CategoryBreakdown(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("CategoryBreakdown: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestCategoryBreakdown_PctCappedAt100(t *testing.T) {
 		},
 	}
 	svc := newReportServiceWithStub(stub)
-	breakdown, err := svc.CategoryBreakdown(1)
+	breakdown, err := svc.CategoryBreakdown(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("CategoryBreakdown: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestCategoryBreakdown_ZeroBudget(t *testing.T) {
 		},
 	}
 	svc := newReportServiceWithStub(stub)
-	breakdown, err := svc.CategoryBreakdown(1)
+	breakdown, err := svc.CategoryBreakdown(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("CategoryBreakdown: %v", err)
 	}
@@ -165,7 +165,7 @@ func TestMonthlySpend_SkipsNullTotals(t *testing.T) {
 		},
 	}
 	svc := newReportServiceWithStub(stub)
-	result, err := svc.MonthlySpend(1)
+	result, err := svc.MonthlySpend(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("MonthlySpend: %v", err)
 	}

@@ -147,13 +147,13 @@ func main() {
 
 	// Tag index constants for readability
 	const (
-		tagGroceries    = 0
-		tagDiningOut    = 1
-		tagTransport    = 2
-		tagUtilities    = 3
+		tagGroceries     = 0
+		tagDiningOut     = 1
+		tagTransport     = 2
+		tagUtilities     = 3
 		tagEntertainment = 4
-		tagHealth       = 5
-		tagHousing      = 6
+		tagHealth        = 5
+		tagHousing       = 6
 	)
 
 	// Expense templates: monthly recurring and occasional expenses

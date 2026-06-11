@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -20,50 +21,50 @@ func init() {
 
 // stubExpenseService implements services.ExpenseServicer for tests.
 type stubExpenseService struct {
-	getAllExpensesFn        func(userID int64) ([]models.Expense, error)
-	getByIdFn              func(userID, id int64) (models.Expense, error)
-	getTotalFn             func(userID int64) (models.MonthlyTotal, error)
-	getDailySpendFn        func(userID int64, months int32) ([]models.DailySpend, error)
-	getFirstDateFn         func(userID int64) (string, error)
-	getDailyForMonthFn     func(userID int64, year, month int32) ([]models.DailySpend, error)
-	getExpensesByMonthFn   func(userID int64, year, month int32) ([]models.Expense, error)
-	createExpenseFn        func(input services.CreateExpenseInput) (models.Expense, error)
-	bulkCreateExpensesFn   func(userID int64, items []services.BulkExpenseItem) ([]models.Expense, error)
-	updateExpenseFn        func(input services.UpdateExpenseInput) (models.Expense, error)
-	deleteExpenseFn        func(userID, id int64) error
+	getAllExpensesFn     func(userID int64) ([]models.Expense, error)
+	getByIdFn            func(userID, id int64) (models.Expense, error)
+	getTotalFn           func(userID int64) (models.MonthlyTotal, error)
+	getDailySpendFn      func(userID int64, months int32) ([]models.DailySpend, error)
+	getFirstDateFn       func(userID int64) (string, error)
+	getDailyForMonthFn   func(userID int64, year, month int32) ([]models.DailySpend, error)
+	getExpensesByMonthFn func(userID int64, year, month int32) ([]models.Expense, error)
+	createExpenseFn      func(input services.CreateExpenseInput) (models.Expense, error)
+	bulkCreateExpensesFn func(userID int64, items []services.BulkExpenseItem) ([]models.Expense, error)
+	updateExpenseFn      func(input services.UpdateExpenseInput) (models.Expense, error)
+	deleteExpenseFn      func(userID, id int64) error
 }
 
-func (s *stubExpenseService) GetAllExpenses(userID int64) ([]models.Expense, error) {
+func (s *stubExpenseService) GetAllExpenses(_ context.Context, userID int64) ([]models.Expense, error) {
 	return s.getAllExpensesFn(userID)
 }
-func (s *stubExpenseService) GetById(userID, id int64) (models.Expense, error) {
+func (s *stubExpenseService) GetById(_ context.Context, userID, id int64) (models.Expense, error) {
 	return s.getByIdFn(userID, id)
 }
-func (s *stubExpenseService) GetTotalSpendThisMonth(userID int64) (models.MonthlyTotal, error) {
+func (s *stubExpenseService) GetTotalSpendThisMonth(_ context.Context, userID int64) (models.MonthlyTotal, error) {
 	return s.getTotalFn(userID)
 }
-func (s *stubExpenseService) GetDailySpend(userID int64, months int32) ([]models.DailySpend, error) {
+func (s *stubExpenseService) GetDailySpend(_ context.Context, userID int64, months int32) ([]models.DailySpend, error) {
 	return s.getDailySpendFn(userID, months)
 }
-func (s *stubExpenseService) GetFirstExpenseDate(userID int64) (string, error) {
+func (s *stubExpenseService) GetFirstExpenseDate(_ context.Context, userID int64) (string, error) {
 	return s.getFirstDateFn(userID)
 }
-func (s *stubExpenseService) GetDailySpendForMonth(userID int64, year, month int32) ([]models.DailySpend, error) {
+func (s *stubExpenseService) GetDailySpendForMonth(_ context.Context, userID int64, year, month int32) ([]models.DailySpend, error) {
 	return s.getDailyForMonthFn(userID, year, month)
 }
-func (s *stubExpenseService) GetExpensesByMonth(userID int64, year, month int32) ([]models.Expense, error) {
+func (s *stubExpenseService) GetExpensesByMonth(_ context.Context, userID int64, year, month int32) ([]models.Expense, error) {
 	return s.getExpensesByMonthFn(userID, year, month)
 }
-func (s *stubExpenseService) CreateExpense(input services.CreateExpenseInput) (models.Expense, error) {
+func (s *stubExpenseService) CreateExpense(_ context.Context, input services.CreateExpenseInput) (models.Expense, error) {
 	return s.createExpenseFn(input)
 }
-func (s *stubExpenseService) BulkCreateExpenses(userID int64, items []services.BulkExpenseItem) ([]models.Expense, error) {
+func (s *stubExpenseService) BulkCreateExpenses(_ context.Context, userID int64, items []services.BulkExpenseItem) ([]models.Expense, error) {
 	return s.bulkCreateExpensesFn(userID, items)
 }
-func (s *stubExpenseService) UpdateExpense(input services.UpdateExpenseInput) (models.Expense, error) {
+func (s *stubExpenseService) UpdateExpense(_ context.Context, input services.UpdateExpenseInput) (models.Expense, error) {
 	return s.updateExpenseFn(input)
 }
-func (s *stubExpenseService) DeleteExpense(userID, id int64) error {
+func (s *stubExpenseService) DeleteExpense(_ context.Context, userID, id int64) error {
 	return s.deleteExpenseFn(userID, id)
 }
 

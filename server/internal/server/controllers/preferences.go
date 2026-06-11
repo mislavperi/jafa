@@ -35,7 +35,7 @@ func (pc *PreferencesController) Get() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		prefs, err := pc.preferencesService.Get(uid)
+		prefs, err := pc.preferencesService.Get(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -68,7 +68,7 @@ func (pc *PreferencesController) Upsert() gin.HandlerFunc {
 		}
 		// Optional fields fall back to the user's stored values (or defaults when
 		// no row exists yet) so clients that omit them don't silently reset them.
-		stored, err := pc.preferencesService.Get(uid)
+		stored, err := pc.preferencesService.Get(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -100,7 +100,7 @@ func (pc *PreferencesController) Upsert() gin.HandlerFunc {
 		if req.NotifyProductUpdates != nil {
 			notifyProductUpdates = *req.NotifyProductUpdates
 		}
-		prefs, err := pc.preferencesService.Upsert(models.UpsertPreferencesInput{
+		prefs, err := pc.preferencesService.Upsert(ctx.Request.Context(), models.UpsertPreferencesInput{
 			UserID:               uid,
 			AccentID:             req.AccentID,
 			FontSize:             req.FontSize,
