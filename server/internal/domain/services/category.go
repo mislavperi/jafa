@@ -21,8 +21,8 @@ func NewCategoryService(queries *psql.Queries) *CategoryService {
 	}
 }
 
-func (cs *CategoryService) List() ([]models.Category, error) {
-	categories, err := cs.Queries.ListCategories(context.Background())
+func (cs *CategoryService) List(ctx context.Context) ([]models.Category, error) {
+	categories, err := cs.Queries.ListCategories(ctx)
 	if err != nil {
 		return nil, err
 	}

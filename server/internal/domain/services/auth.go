@@ -23,8 +23,8 @@ func NewAuthService(queries *psql.Queries) *AuthService {
 	return &AuthService{Queries: queries, mapper: mappers.NewUserMapper()}
 }
 
-func (as *AuthService) Login(username, password string) (models.User, error) {
-	row, err := as.Queries.GetUserByUsername(context.Background(), username)
+func (as *AuthService) Login(ctx context.Context, username, password string) (models.User, error) {
+	row, err := as.Queries.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.User{}, customerrors.ErrInvalidCredentials
@@ -40,8 +40,8 @@ func (as *AuthService) Login(username, password string) (models.User, error) {
 // DeleteAccount soft-deletes the user: the row and the user's data stay in the
 // database for recovery, but the account can no longer log in and its username
 // is freed for re-registration (uniqueness only covers active users).
-func (as *AuthService) DeleteAccount(userID int64) error {
-	rows, err := as.Queries.SoftDeleteUser(context.Background(), userID)
+func (as *AuthService) DeleteAccount(ctx context.Context, userID int64) error {
+	rows, err := as.Queries.SoftDeleteUser(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -51,12 +51,12 @@ func (as *AuthService) DeleteAccount(userID int64) error {
 	return nil
 }
 
-func (as *AuthService) Register(params requestmodels.RegisterRequest) (models.User, error) {
+func (as *AuthService) Register(ctx context.Context, params requestmodels.RegisterRequest) (models.User, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(params.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return models.User{}, err
 	}
-	row, err := as.Queries.CreateUser(context.Background(), psql.CreateUserParams{
+	row, err := as.Queries.CreateUser(ctx, psql.CreateUserParams{
 		Username:  params.Username,
 		Password:  string(hash),
 		FirstName: params.FirstName,

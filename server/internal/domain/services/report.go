@@ -25,8 +25,8 @@ func NewReportService(queries *psql.Queries) *ReportService {
 
 // CategoryBreakdown buckets the user's expenses into categories (by keyword
 // match) and returns the spend, remaining budget and percentage used for each.
-func (rs *ReportService) CategoryBreakdown(userID int64) ([]models.CategoryBreakdown, error) {
-	rawCategories, err := rs.Queries.ListCategories(context.Background())
+func (rs *ReportService) CategoryBreakdown(ctx context.Context, userID int64) ([]models.CategoryBreakdown, error) {
+	rawCategories, err := rs.Queries.ListCategories(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func (rs *ReportService) CategoryBreakdown(userID int64) ([]models.CategoryBreak
 		return nil, err
 	}
 
-	rawExpenses, err := rs.Queries.GetAllExpenses(context.Background(), userID)
+	rawExpenses, err := rs.Queries.GetAllExpenses(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,8 @@ func (rs *ReportService) CategoryBreakdown(userID int64) ([]models.CategoryBreak
 }
 
 // MonthlySpend returns the total spend per calendar month, oldest first.
-func (rs *ReportService) MonthlySpend(userID int64) ([]models.MonthlySpend, error) {
-	rows, err := rs.Queries.GetMonthlySpend(context.Background(), userID)
+func (rs *ReportService) MonthlySpend(ctx context.Context, userID int64) ([]models.MonthlySpend, error) {
+	rows, err := rs.Queries.GetMonthlySpend(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

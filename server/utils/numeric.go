@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -23,12 +22,4 @@ func NumericToFloat(n pgtype.Numeric) (float32, error) {
 		return 0, nil
 	}
 	return float32(f.Float64), nil
-}
-
-func ParseDate(dateStr string) time.Time {
-	t, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return time.Time{}
-	}
-	return t
 }

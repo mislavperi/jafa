@@ -22,7 +22,7 @@ func (rc *ReportController) CategoryBreakdown() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		breakdown, err := rc.reportService.CategoryBreakdown(uid)
+		breakdown, err := rc.reportService.CategoryBreakdown(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -37,7 +37,7 @@ func (rc *ReportController) MonthlySpend() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		monthly, err := rc.reportService.MonthlySpend(uid)
+		monthly, err := rc.reportService.MonthlySpend(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return

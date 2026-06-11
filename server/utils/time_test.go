@@ -8,6 +8,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+func TestParseDate(t *testing.T) {
+	t.Run("valid date", func(t *testing.T) {
+		got, err := ParseDate("2024-06-15")
+		if err != nil {
+			t.Fatalf("ParseDate returned error: %v", err)
+		}
+		if got.Year() != 2024 || int(got.Month()) != 6 || got.Day() != 15 {
+			t.Errorf("ParseDate = %v, want 2024-06-15", got)
+		}
+	})
+
+	t.Run("invalid date returns error", func(t *testing.T) {
+		if _, err := ParseDate("not-a-date"); err == nil {
+			t.Error("ParseDate(invalid) = nil error, want error")
+		}
+	})
+
+	t.Run("empty string returns error", func(t *testing.T) {
+		if _, err := ParseDate(""); err == nil {
+			t.Error("ParseDate(\"\") = nil error, want error")
+		}
+	})
+}
+
 func TestFormatRFC3339_Valid(t *testing.T) {
 	ts := pgtype.Timestamptz{
 		Time:  time.Date(2024, 3, 10, 14, 30, 0, 0, time.UTC),

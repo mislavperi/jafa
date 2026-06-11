@@ -2,10 +2,12 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -29,18 +31,32 @@ func NewServer(expenseController *controllers.ExpenseController, tagController *
 	return server
 }
 
-func (s *Server) Start(ctx context.Context) {
-	errs := make(chan error, 1)
+// shutdownTimeout bounds how long in-flight requests may run after the server
+// is asked to stop before they are cut off.
+const shutdownTimeout = 10 * time.Second
 
+func (s *Server) Start(ctx context.Context) {
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", s.port),
+		Handler: s.Gin,
+	}
+
+	errs := make(chan error, 1)
 	go func() {
-		errs <- s.Gin.Run(fmt.Sprintf(":%d", s.port))
+		errs <- srv.ListenAndServe()
 	}()
 
 	select {
-	case <-errs:
-		return
+	case err := <-errs:
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("server error: %v", err)
+		}
 	case <-ctx.Done():
-		return
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			log.Printf("graceful shutdown failed: %v", err)
+		}
 	}
 }
 

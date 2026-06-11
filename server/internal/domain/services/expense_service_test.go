@@ -20,7 +20,7 @@ type stubExpenseQuerier struct {
 	softDeleteFn       func(ctx context.Context, arg psql.SoftDeleteExpenseParams) (int64, error)
 	updateExpenseFn    func(ctx context.Context, arg psql.UpdateExpenseParams) (psql.Expense, error)
 	getExpenseByIdFn   func(ctx context.Context, arg psql.GetExpenseByIdParams) (psql.Expense, error)
-	getAllExpensesFn    func(ctx context.Context, userID int64) ([]psql.Expense, error)
+	getAllExpensesFn   func(ctx context.Context, userID int64) ([]psql.Expense, error)
 	createExpenseFn    func(ctx context.Context, arg psql.CreateExpenseParams) (psql.Expense, error)
 	getTotalFn         func(ctx context.Context, userID int64) (pgtype.Numeric, error)
 	getDailySpendFn    func(ctx context.Context, arg psql.GetDailySpendParams) ([]psql.GetDailySpendRow, error)
@@ -73,7 +73,6 @@ func newExpenseServiceWithStub(q ExpenseQuerier) *ExpenseService {
 	return &ExpenseService{Queries: q, Mapper: mappers.NewExpenseMapper()}
 }
 
-
 // ---- DeleteExpense ----
 
 func TestDeleteExpense_NotFound(t *testing.T) {
@@ -83,7 +82,7 @@ func TestDeleteExpense_NotFound(t *testing.T) {
 		},
 	}
 	svc := newExpenseServiceWithStub(stub)
-	err := svc.DeleteExpense(1, 99)
+	err := svc.DeleteExpense(context.Background(), 1, 99)
 	if !errors.Is(err, ErrExpenseNotFound) {
 		t.Errorf("DeleteExpense(missing) = %v, want ErrExpenseNotFound", err)
 	}
@@ -97,7 +96,7 @@ func TestDeleteExpense_DBError(t *testing.T) {
 		},
 	}
 	svc := newExpenseServiceWithStub(stub)
-	err := svc.DeleteExpense(1, 99)
+	err := svc.DeleteExpense(context.Background(), 1, 99)
 	if !errors.Is(err, dbErr) {
 		t.Errorf("DeleteExpense(db error) = %v, want %v", err, dbErr)
 	}
@@ -113,7 +112,7 @@ func TestDeleteExpense_Success(t *testing.T) {
 		},
 	}
 	svc := newExpenseServiceWithStub(stub)
-	if err := svc.DeleteExpense(3, 5); err != nil {
+	if err := svc.DeleteExpense(context.Background(), 3, 5); err != nil {
 		t.Errorf("DeleteExpense: unexpected error: %v", err)
 	}
 }
@@ -127,7 +126,7 @@ func TestUpdateExpense_NotFound(t *testing.T) {
 		},
 	}
 	svc := newExpenseServiceWithStub(stub)
-	_, err := svc.UpdateExpense(UpdateExpenseInput{ID: 1, UserID: 1, Name: "X", Amount: 1, Cost: 1})
+	_, err := svc.UpdateExpense(context.Background(), UpdateExpenseInput{ID: 1, UserID: 1, Name: "X", Amount: 1, Cost: 1})
 	if !errors.Is(err, ErrExpenseNotFound) {
 		t.Errorf("UpdateExpense(no rows) = %v, want ErrExpenseNotFound", err)
 	}
@@ -141,7 +140,7 @@ func TestUpdateExpense_DBError(t *testing.T) {
 		},
 	}
 	svc := newExpenseServiceWithStub(stub)
-	_, err := svc.UpdateExpense(UpdateExpenseInput{ID: 1, UserID: 1, Name: "X", Amount: 1, Cost: 1})
+	_, err := svc.UpdateExpense(context.Background(), UpdateExpenseInput{ID: 1, UserID: 1, Name: "X", Amount: 1, Cost: 1})
 	if !errors.Is(err, dbErr) {
 		t.Errorf("UpdateExpense(db error) = %v, want %v", err, dbErr)
 	}
@@ -156,7 +155,7 @@ func TestGetById_NotFound(t *testing.T) {
 		},
 	}
 	svc := newExpenseServiceWithStub(stub)
-	_, err := svc.GetById(1, 99)
+	_, err := svc.GetById(context.Background(), 1, 99)
 	if !errors.Is(err, ErrExpenseNotFound) {
 		t.Errorf("GetById(no rows) = %v, want ErrExpenseNotFound", err)
 	}
@@ -182,7 +181,7 @@ func TestGetById_Success(t *testing.T) {
 		},
 	}
 	svc := newExpenseServiceWithStub(stub)
-	got, err := svc.GetById(1, 7)
+	got, err := svc.GetById(context.Background(), 1, 7)
 	if err != nil {
 		t.Fatalf("GetById: %v", err)
 	}

@@ -20,16 +20,16 @@ func NewTagService(queries *psql.Queries) *TagService {
 	}
 }
 
-func (ts *TagService) GetAllTags(userID int64) ([]models.Tag, error) {
-	tags, err := ts.Queries.GetAllTags(context.Background(), userID)
+func (ts *TagService) GetAllTags(ctx context.Context, userID int64) ([]models.Tag, error) {
+	tags, err := ts.Queries.GetAllTags(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	return ts.Mapper.MapManyToDomain(tags)
 }
 
-func (ts *TagService) CreateTag(userID int64, name string) (models.Tag, error) {
-	tag, err := ts.Queries.CreateTag(context.Background(), psql.CreateTagParams{
+func (ts *TagService) CreateTag(ctx context.Context, userID int64, name string) (models.Tag, error) {
+	tag, err := ts.Queries.CreateTag(ctx, psql.CreateTagParams{
 		Name:   name,
 		UserID: userID,
 	})
@@ -39,8 +39,8 @@ func (ts *TagService) CreateTag(userID int64, name string) (models.Tag, error) {
 	return ts.Mapper.MapToDomain(tag)
 }
 
-func (ts *TagService) GetTagsForExpense(userID, expenseID int64) ([]models.Tag, error) {
-	tags, err := ts.Queries.GetTagsForExpense(context.Background(), psql.GetTagsForExpenseParams{
+func (ts *TagService) GetTagsForExpense(ctx context.Context, userID, expenseID int64) ([]models.Tag, error) {
+	tags, err := ts.Queries.GetTagsForExpense(ctx, psql.GetTagsForExpenseParams{
 		ExpenseID: expenseID,
 		UserID:    userID,
 	})
@@ -50,16 +50,16 @@ func (ts *TagService) GetTagsForExpense(userID, expenseID int64) ([]models.Tag, 
 	return ts.Mapper.MapManyToDomain(tags)
 }
 
-func (ts *TagService) AddTagToExpense(userID, expenseID, tagID int64) error {
-	return ts.Queries.AddTagToExpense(context.Background(), psql.AddTagToExpenseParams{
+func (ts *TagService) AddTagToExpense(ctx context.Context, userID, expenseID, tagID int64) error {
+	return ts.Queries.AddTagToExpense(ctx, psql.AddTagToExpenseParams{
 		ExpenseID: expenseID,
 		TagID:     tagID,
 		UserID:    userID,
 	})
 }
 
-func (ts *TagService) RemoveTagFromExpense(userID, expenseID, tagID int64) error {
-	return ts.Queries.RemoveTagFromExpense(context.Background(), psql.RemoveTagFromExpenseParams{
+func (ts *TagService) RemoveTagFromExpense(ctx context.Context, userID, expenseID, tagID int64) error {
+	return ts.Queries.RemoveTagFromExpense(ctx, psql.RemoveTagFromExpenseParams{
 		ExpenseID: expenseID,
 		TagID:     tagID,
 		UserID:    userID,

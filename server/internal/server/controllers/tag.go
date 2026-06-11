@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/server/internal/server/httperr"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
+	"github.com/mislavperi/jafa/server/internal/server/httperr"
 
 	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 )
@@ -25,7 +25,7 @@ func (tc *TagController) GetAllTags() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		tags, err := tc.tagService.GetAllTags(uid)
+		tags, err := tc.tagService.GetAllTags(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -45,7 +45,7 @@ func (tc *TagController) CreateTag() gin.HandlerFunc {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
-		tag, err := tc.tagService.CreateTag(uid, req.Name)
+		tag, err := tc.tagService.CreateTag(ctx.Request.Context(), uid, req.Name)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -65,7 +65,7 @@ func (tc *TagController) GetTagsForExpense() gin.HandlerFunc {
 			httperr.BadRequest(ctx, "invalid expense id", nil)
 			return
 		}
-		tags, err := tc.tagService.GetTagsForExpense(uid, int64(id))
+		tags, err := tc.tagService.GetTagsForExpense(ctx.Request.Context(), uid, int64(id))
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -94,7 +94,7 @@ func (tc *TagController) AddTagToExpense() gin.HandlerFunc {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
-		if err := tc.tagService.AddTagToExpense(uid, int64(id), req.TagID); err != nil {
+		if err := tc.tagService.AddTagToExpense(ctx.Request.Context(), uid, int64(id), req.TagID); err != nil {
 			httperr.Internal(ctx, err)
 			return
 		}
@@ -118,7 +118,7 @@ func (tc *TagController) RemoveTagFromExpense() gin.HandlerFunc {
 			httperr.BadRequest(ctx, "invalid tag id", nil)
 			return
 		}
-		if err := tc.tagService.RemoveTagFromExpense(uid, int64(id), int64(tagID)); err != nil {
+		if err := tc.tagService.RemoveTagFromExpense(ctx.Request.Context(), uid, int64(id), int64(tagID)); err != nil {
 			httperr.Internal(ctx, err)
 			return
 		}

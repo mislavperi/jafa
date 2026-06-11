@@ -37,7 +37,7 @@ func (ac *AuthController) Login() gin.HandlerFunc {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "username and password are required"})
 			return
 		}
-		user, err := ac.authService.Login(req.Username, req.Password)
+		user, err := ac.authService.Login(ctx.Request.Context(), req.Username, req.Password)
 		if errors.Is(err, customerrors.ErrInvalidCredentials) {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 			return
@@ -99,7 +99,7 @@ func (ac *AuthController) DeleteAccount() gin.HandlerFunc {
 			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
 			return
 		}
-		if err := ac.authService.DeleteAccount(userID); err != nil {
+		if err := ac.authService.DeleteAccount(ctx.Request.Context(), userID); err != nil {
 			if errors.Is(err, customerrors.ErrUserNotFound) {
 				ctx.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 				return
@@ -124,7 +124,7 @@ func (ac *AuthController) Register() gin.HandlerFunc {
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": "username and password are required"})
 			return
 		}
-		user, err := ac.authService.Register(requestmodels.RegisterRequest{
+		user, err := ac.authService.Register(ctx.Request.Context(), requestmodels.RegisterRequest{
 			Username:  req.Username,
 			Password:  req.Password,
 			FirstName: req.FirstName,

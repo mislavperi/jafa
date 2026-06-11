@@ -39,8 +39,8 @@ func mapPreferencesRow(row psql.UserPreference) (models.UserPreferences, error) 
 	}, nil
 }
 
-func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) {
-	row, err := ps.Queries.GetUserPreferences(context.Background(), userID)
+func (ps *PreferencesService) Get(ctx context.Context, userID int64) (models.UserPreferences, error) {
+	row, err := ps.Queries.GetUserPreferences(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.DefaultPreferences(userID), nil
@@ -50,12 +50,12 @@ func (ps *PreferencesService) Get(userID int64) (models.UserPreferences, error) 
 	return mapPreferencesRow(row)
 }
 
-func (ps *PreferencesService) Upsert(input models.UpsertPreferencesInput) (models.UserPreferences, error) {
+func (ps *PreferencesService) Upsert(ctx context.Context, input models.UpsertPreferencesInput) (models.UserPreferences, error) {
 	budget, err := utils.FloatToNumeric(input.MonthlyBudget)
 	if err != nil {
 		return models.UserPreferences{}, err
 	}
-	row, err := ps.Queries.UpsertUserPreferences(context.Background(), psql.UpsertUserPreferencesParams{
+	row, err := ps.Queries.UpsertUserPreferences(ctx, psql.UpsertUserPreferencesParams{
 		UserID:               input.UserID,
 		AccentID:             input.AccentID,
 		FontSize:             input.FontSize,
