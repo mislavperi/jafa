@@ -1,11 +1,19 @@
-describe('My First Test', function () {
-  before((browser) => {
+/**
+ * Smoke test: verifies the app loads and redirects unauthenticated users to /login.
+ */
+describe('Smoke Test', function () {
+  before(function (browser) {
     browser.init()
   })
 
-  it('visits the app root url', function () {
-    browser.assert.textContains('h1', 'You did it!')
+  it('loads and shows the login page for unauthenticated users', function (browser) {
+    browser
+      .waitForElementVisible('input[autocomplete="username"]', 5000)
+      .assert.urlContains('/login')
+      .assert.textContains('body', 'Customer Sign-In')
   })
 
-  after((browser) => browser.end())
+  after(function (browser) {
+    browser.end()
+  })
 })

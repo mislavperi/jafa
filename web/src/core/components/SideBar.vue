@@ -96,6 +96,7 @@ function toggleMenu(event: Event) {
       </button>
 
       <button
+        data-testid="sidebar-toggle"
         class="flex items-center gap-3 px-2.5 py-2.5 rounded-lg cursor-pointer transition-colors text-[calc(13px*var(--jafa-text-scale,1))] whitespace-nowrap text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)] hover:bg-[var(--jafa-surface-2)]"
         :class="sidebarToggle.isExpanded ? '' : 'justify-center'"
         @click="sidebarToggle.toggle"
