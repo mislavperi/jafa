@@ -8,9 +8,11 @@ type RecurringScheduleRequest struct {
 
 type CreateExpenseRequest struct {
 	Name              string                    `json:"name" binding:"required"`
+	Kind              string                    `json:"kind,omitempty" binding:"omitempty,oneof=expense income"`
 	Amount            *float32                  `json:"amount" binding:"required"`
 	Cost              *float32                  `json:"cost" binding:"required"`
 	RecurringSchedule *RecurringScheduleRequest `json:"recurringSchedule,omitempty"`
+	InstallmentCount  *int                      `json:"installmentCount,omitempty" binding:"omitempty,min=2"`
 }
 
 type BulkExpenseItemRequest struct {
@@ -26,7 +28,9 @@ type BulkCreateExpensesRequest struct {
 
 type UpdateExpenseRequest struct {
 	Name              string                    `json:"name" binding:"required"`
+	Kind              string                    `json:"kind,omitempty" binding:"omitempty,oneof=expense income"`
 	Amount            *float32                  `json:"amount" binding:"required"`
 	Cost              *float32                  `json:"cost" binding:"required"`
 	RecurringSchedule *RecurringScheduleRequest `json:"recurringSchedule,omitempty"`
+	InstallmentCount  *int                      `json:"installmentCount,omitempty" binding:"omitempty,min=2"`
 }

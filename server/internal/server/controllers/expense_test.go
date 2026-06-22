@@ -22,8 +22,10 @@ func init() {
 // stubExpenseService implements services.ExpenseServicer for tests.
 type stubExpenseService struct {
 	getAllExpensesFn     func(userID int64) ([]models.Expense, error)
+	getAllEntriesFn      func(userID int64) ([]models.Expense, error)
 	getByIdFn            func(userID, id int64) (models.Expense, error)
 	getTotalFn           func(userID int64) (models.MonthlyTotal, error)
+	getIncomeFn          func(userID int64) (models.MonthlyTotal, error)
 	getDailySpendFn      func(userID int64, months int32) ([]models.DailySpend, error)
 	getFirstDateFn       func(userID int64) (string, error)
 	getDailyForMonthFn   func(userID int64, year, month int32) ([]models.DailySpend, error)
@@ -37,11 +39,23 @@ type stubExpenseService struct {
 func (s *stubExpenseService) GetAllExpenses(_ context.Context, userID int64) ([]models.Expense, error) {
 	return s.getAllExpensesFn(userID)
 }
+func (s *stubExpenseService) GetAllEntries(_ context.Context, userID int64) ([]models.Expense, error) {
+	if s.getAllEntriesFn != nil {
+		return s.getAllEntriesFn(userID)
+	}
+	return nil, nil
+}
 func (s *stubExpenseService) GetById(_ context.Context, userID, id int64) (models.Expense, error) {
 	return s.getByIdFn(userID, id)
 }
 func (s *stubExpenseService) GetTotalSpendThisMonth(_ context.Context, userID int64) (models.MonthlyTotal, error) {
 	return s.getTotalFn(userID)
+}
+func (s *stubExpenseService) GetTotalIncomeThisMonth(_ context.Context, userID int64) (models.MonthlyTotal, error) {
+	if s.getIncomeFn != nil {
+		return s.getIncomeFn(userID)
+	}
+	return models.MonthlyTotal{}, nil
 }
 func (s *stubExpenseService) GetDailySpend(_ context.Context, userID int64, months int32) ([]models.DailySpend, error) {
 	return s.getDailySpendFn(userID, months)
@@ -285,6 +299,78 @@ func TestCreateExpense_OK(t *testing.T) {
 
 	if w.Code != http.StatusCreated {
 		t.Errorf("status = %d, want 201", w.Code)
+	}
+}
+
+func TestCreateExpense_WithInstallments(t *testing.T) {
+	var capturedCount *int
+	created := models.Expense{Id: 1, Name: "Phone", Cost: 200, InstallmentPlan: &models.InstallmentPlan{Count: 4, PaymentAmount: 50}}
+	svc := &stubExpenseService{
+		createExpenseFn: func(inp services.CreateExpenseInput) (models.Expense, error) {
+			capturedCount = inp.InstallmentCount
+			return created, nil
+		},
+	}
+	ec := NewExpenseController(svc)
+	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
+
+	body := jsonBody(t, map[string]any{"name": "Phone", "amount": 1.0, "cost": 200.0, "installmentCount": 4})
+	req := httptest.NewRequest(http.MethodPost, "/expense/", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Errorf("status = %d, want 201", w.Code)
+	}
+	if capturedCount == nil || *capturedCount != 4 {
+		t.Errorf("InstallmentCount = %v, want 4", capturedCount)
+	}
+	var got models.Expense
+	json.Unmarshal(w.Body.Bytes(), &got)
+	if got.InstallmentPlan == nil || got.InstallmentPlan.Count != 4 || got.InstallmentPlan.PaymentAmount != 50 {
+		t.Errorf("InstallmentPlan = %+v, want {4 50}", got.InstallmentPlan)
+	}
+}
+
+func TestCreateExpense_InstallmentCountTooLow(t *testing.T) {
+	svc := &stubExpenseService{
+		createExpenseFn: func(_ services.CreateExpenseInput) (models.Expense, error) {
+			t.Fatal("service should not be reached; binding rejects count<2")
+			return models.Expense{}, nil
+		},
+	}
+	ec := NewExpenseController(svc)
+	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
+
+	body := jsonBody(t, map[string]any{"name": "Phone", "amount": 1.0, "cost": 200.0, "installmentCount": 1})
+	req := httptest.NewRequest(http.MethodPost, "/expense/", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", w.Code)
+	}
+}
+
+func TestCreateExpense_InvalidInstallmentFromService(t *testing.T) {
+	svc := &stubExpenseService{
+		createExpenseFn: func(_ services.CreateExpenseInput) (models.Expense, error) {
+			return models.Expense{}, services.ErrInvalidInstallmentCount
+		},
+	}
+	ec := NewExpenseController(svc)
+	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
+
+	body := jsonBody(t, map[string]any{"name": "Phone", "amount": 1.0, "cost": 200.0, "installmentCount": 4})
+	req := httptest.NewRequest(http.MethodPost, "/expense/", body)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", w.Code)
 	}
 }
 

@@ -12,11 +12,13 @@ import (
 // Extracted as an interface to allow test doubles.
 type ExpenseQuerier interface {
 	GetAllExpenses(ctx context.Context, userID int64) ([]psql.Expense, error)
+	GetAllEntries(ctx context.Context, userID int64) ([]psql.Expense, error)
 	GetExpenseById(ctx context.Context, arg psql.GetExpenseByIdParams) (psql.Expense, error)
 	CreateExpense(ctx context.Context, arg psql.CreateExpenseParams) (psql.Expense, error)
 	UpdateExpense(ctx context.Context, arg psql.UpdateExpenseParams) (psql.Expense, error)
 	SoftDeleteExpense(ctx context.Context, arg psql.SoftDeleteExpenseParams) (int64, error)
 	GetTotalSpendThisMonth(ctx context.Context, userID int64) (pgtype.Numeric, error)
+	GetTotalIncomeThisMonth(ctx context.Context, userID int64) (pgtype.Numeric, error)
 	GetDailySpend(ctx context.Context, arg psql.GetDailySpendParams) ([]psql.GetDailySpendRow, error)
 	GetExpensesByMonth(ctx context.Context, arg psql.GetExpensesByMonthParams) ([]psql.Expense, error)
 	GetFirstExpenseDate(ctx context.Context, userID int64) (interface{}, error)

@@ -101,6 +101,58 @@ func TestExpenseMapper_MapToDomain_WithRecurringSchedule(t *testing.T) {
 	}
 }
 
+func TestExpenseMapper_MapToDomain_WithInstallmentPlan(t *testing.T) {
+	mapper := NewExpenseMapper()
+	now := time.Now().UTC()
+
+	exp := psql.Expense{
+		ID:               7,
+		Name:             "Phone",
+		Amount:           makeNumeric(t, "200.000"),
+		Cost:             makeNumeric(t, "200.000"),
+		InstallmentCount: pgtype.Int4{Int32: 4, Valid: true},
+		CreatedAt:        makeTimestamp(now),
+		UpdatedAt:        makeTimestamp(now),
+	}
+
+	got, err := mapper.MapToDomain(exp)
+	if err != nil {
+		t.Fatalf("MapToDomain: %v", err)
+	}
+
+	if got.InstallmentPlan == nil {
+		t.Fatal("InstallmentPlan is nil, want non-nil")
+	}
+	if got.InstallmentPlan.Count != 4 {
+		t.Errorf("Count = %d, want 4", got.InstallmentPlan.Count)
+	}
+	if got.InstallmentPlan.PaymentAmount < 49.99 || got.InstallmentPlan.PaymentAmount > 50.01 {
+		t.Errorf("PaymentAmount = %v, want ~50 (200/4)", got.InstallmentPlan.PaymentAmount)
+	}
+}
+
+func TestExpenseMapper_MapToDomain_NoInstallmentPlan(t *testing.T) {
+	mapper := NewExpenseMapper()
+	now := time.Now().UTC()
+
+	exp := psql.Expense{
+		ID:        1,
+		Name:      "Coffee",
+		Amount:    makeNumeric(t, "3.500"),
+		Cost:      makeNumeric(t, "3.500"),
+		CreatedAt: makeTimestamp(now),
+		UpdatedAt: makeTimestamp(now),
+	}
+
+	got, err := mapper.MapToDomain(exp)
+	if err != nil {
+		t.Fatalf("MapToDomain: %v", err)
+	}
+	if got.InstallmentPlan != nil {
+		t.Errorf("InstallmentPlan = %v, want nil", got.InstallmentPlan)
+	}
+}
+
 func TestExpenseMapper_MapManyToDomain_Empty(t *testing.T) {
 	mapper := NewExpenseMapper()
 	got, err := mapper.MapManyToDomain(nil)

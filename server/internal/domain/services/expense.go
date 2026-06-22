@@ -21,6 +21,27 @@ var ErrExpenseNotFound = errors.New("expense not found")
 // a valid YYYY-MM-DD date. Controllers map this to HTTP 400.
 var ErrInvalidStartDate = errors.New("invalid recurring schedule start date")
 
+// ErrInvalidInstallmentCount is returned when an expense is split into fewer
+// than 2 payments. Controllers map this to HTTP 400.
+var ErrInvalidInstallmentCount = errors.New("installment count must be at least 2")
+
+// ErrInvalidKind is returned when an entry's kind is neither "expense" nor
+// "income". Controllers map this to HTTP 400.
+var ErrInvalidKind = errors.New("kind must be 'expense' or 'income'")
+
+// resolveKind defaults an empty kind to expense and validates the value.
+func resolveKind(kind string) (string, error) {
+	if kind == "" {
+		return string(models.ExpenseKindExpense), nil
+	}
+	switch models.ExpenseKind(kind) {
+	case models.ExpenseKindExpense, models.ExpenseKindIncome:
+		return kind, nil
+	default:
+		return "", ErrInvalidKind
+	}
+}
+
 type ExpenseService struct {
 	Queries ExpenseQuerier
 	Pool    *pgxpool.Pool
@@ -41,6 +62,16 @@ func (es *ExpenseService) GetAllExpenses(ctx context.Context, userID int64) ([]m
 		return nil, err
 	}
 	return es.Mapper.MapManyToDomain(expenses)
+}
+
+// GetAllEntries returns both expenses and income for the user, newest first.
+// Used by the transactions table where the two kinds are shown together.
+func (es *ExpenseService) GetAllEntries(ctx context.Context, userID int64) ([]models.Expense, error) {
+	entries, err := es.Queries.GetAllEntries(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return es.Mapper.MapManyToDomain(entries)
 }
 
 func (es *ExpenseService) GetTotalSpendThisMonth(ctx context.Context, userID int64) (models.MonthlyTotal, error) {
@@ -128,13 +159,19 @@ func (es *ExpenseService) GetDailySpendForMonth(ctx context.Context, userID int6
 
 type CreateExpenseInput struct {
 	UserID            int64
+	Kind              string
 	Name              string
 	Amount            float32
 	Cost              float32
 	RecurringSchedule *models.RecurringSchedule
+	InstallmentCount  *int
 }
 
 func (es *ExpenseService) CreateExpense(ctx context.Context, input CreateExpenseInput) (models.Expense, error) {
+	kind, err := resolveKind(input.Kind)
+	if err != nil {
+		return models.Expense{}, err
+	}
 	amount, err := utils.FloatToNumeric(input.Amount)
 	if err != nil {
 		return models.Expense{}, err
@@ -155,19 +192,52 @@ func (es *ExpenseService) CreateExpense(ctx context.Context, input CreateExpense
 		recurrenceDay = pgtype.Int4{Int32: int32(input.RecurringSchedule.DayOfMonth), Valid: true}
 		recurrenceStartDate = pgtype.Date{Time: startDate, Valid: true}
 	}
+	installmentCount, err := installmentCountParam(input.InstallmentCount)
+	if err != nil {
+		return models.Expense{}, err
+	}
 	expense, err := es.Queries.CreateExpense(ctx, psql.CreateExpenseParams{
 		UserID:              input.UserID,
+		Kind:                kind,
 		Name:                input.Name,
 		Amount:              amount,
 		Cost:                cost,
 		RecurrenceInterval:  recurrenceInterval,
 		RecurrenceDay:       recurrenceDay,
 		RecurrenceStartDate: recurrenceStartDate,
+		InstallmentCount:    installmentCount,
 	})
 	if err != nil {
 		return models.Expense{}, err
 	}
 	return es.Mapper.MapToDomain(expense)
+}
+
+func (es *ExpenseService) GetTotalIncomeThisMonth(ctx context.Context, userID int64) (models.MonthlyTotal, error) {
+	total, err := es.Queries.GetTotalIncomeThisMonth(ctx, userID)
+	if err != nil {
+		return models.MonthlyTotal{}, err
+	}
+	f, err := total.Float64Value()
+	if err != nil || !f.Valid {
+		return models.MonthlyTotal{}, err
+	}
+	return models.MonthlyTotal{
+		Total: float32(f.Float64),
+	}, nil
+}
+
+// installmentCountParam validates an optional installment count and converts it
+// to the pgtype the queries expect. A nil count means "no split" (one-time
+// payment). Any non-nil count below 2 is rejected.
+func installmentCountParam(count *int) (pgtype.Int4, error) {
+	if count == nil {
+		return pgtype.Int4{}, nil
+	}
+	if *count < 2 {
+		return pgtype.Int4{}, ErrInvalidInstallmentCount
+	}
+	return pgtype.Int4{Int32: int32(*count), Valid: true}, nil
 }
 
 // BulkExpenseItem is one expense in a bulk import (e.g. a receipt line item).
@@ -202,6 +272,7 @@ func (es *ExpenseService) BulkCreateExpenses(ctx context.Context, userID int64, 
 		}
 		row, err := qtx.CreateExpense(ctx, psql.CreateExpenseParams{
 			UserID: userID,
+			Kind:   string(models.ExpenseKindExpense),
 			Name:   item.Name,
 			Amount: amount,
 			Cost:   cost,
@@ -244,6 +315,7 @@ type UpdateExpenseInput struct {
 	Amount            float32
 	Cost              float32
 	RecurringSchedule *models.RecurringSchedule
+	InstallmentCount  *int
 }
 
 func (es *ExpenseService) UpdateExpense(ctx context.Context, input UpdateExpenseInput) (models.Expense, error) {
@@ -267,6 +339,10 @@ func (es *ExpenseService) UpdateExpense(ctx context.Context, input UpdateExpense
 		recurrenceDay = pgtype.Int4{Int32: int32(input.RecurringSchedule.DayOfMonth), Valid: true}
 		recurrenceStartDate = pgtype.Date{Time: startDate, Valid: true}
 	}
+	installmentCount, err := installmentCountParam(input.InstallmentCount)
+	if err != nil {
+		return models.Expense{}, err
+	}
 	expense, err := es.Queries.UpdateExpense(ctx, psql.UpdateExpenseParams{
 		ID:                  input.ID,
 		UserID:              input.UserID,
@@ -276,6 +352,7 @@ func (es *ExpenseService) UpdateExpense(ctx context.Context, input UpdateExpense
 		RecurrenceInterval:  recurrenceInterval,
 		RecurrenceDay:       recurrenceDay,
 		RecurrenceStartDate: recurrenceStartDate,
+		InstallmentCount:    installmentCount,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

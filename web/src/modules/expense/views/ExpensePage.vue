@@ -10,7 +10,7 @@ import DailySpendChart from '../components/DailySpendChart.vue'
 import AddExpenseModal from '../components/AddExpenseModal.vue'
 import ReceiptScannerModal from '../components/ReceiptScannerModal.vue'
 import ExpenseTagsCell from '../components/ExpenseTagsCell.vue'
-import { useExpenses, useExpensesByMonth, useMonthlyTotal, useDeleteExpense } from '../composables/useExpenses'
+import { useExpenses, useAllEntries, useExpensesByMonth, useMonthlyTotal, useMonthlyIncome, useDeleteExpense } from '../composables/useExpenses'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useThemeStore } from '@/stores/theme'
 import { useOnboardingStore } from '@/stores/onboarding'
@@ -43,7 +43,12 @@ async function removeExpense(e: Expense) {
 }
 
 const { data: allExpenses } = useExpenses()
+// Both kinds, for the recent transactions table (expenses-only `allExpenses`
+// still drives upcoming bills so income isn't treated as a bill).
+const { data: allEntries } = useAllEntries()
+const isIncome = (e: Expense) => e.kind === 'income'
 const { data: monthlyTotal } = useMonthlyTotal()
+const { data: monthlyIncome } = useMonthlyIncome()
 
 // Current + last month for insights
 const now = new Date()
@@ -56,6 +61,7 @@ const { data: currentMonthExpenses } = useExpensesByMonth(currentYear, currentMo
 const { data: lastMonthExpenses } = useExpensesByMonth(lastYear, lastMonth)
 
 const currentTotal = computed(() => monthlyTotal.value?.total ?? 0)
+const incomeTotal = computed(() => monthlyIncome.value?.total ?? 0)
 
 const lastMonthTotal = computed(() =>
   (lastMonthExpenses.value ?? []).reduce((s, e) => s + e.amount, 0)
@@ -88,16 +94,20 @@ const topCategory = computed(() => {
 // Monthly budget comes from user preferences (set on the Settings page); 0
 // means no budget configured.
 const monthlyBudget = computed(() => theme.monthlyBudget)
+// Income tops up the configured budget: this month's income is added to the
+// monthly budget to form the spendable pool.
+const effectiveBudget = computed(() => monthlyBudget.value + incomeTotal.value)
+const hasBudget = computed(() => effectiveBudget.value > 0)
 const budgetPctUsed = computed(() =>
-  monthlyBudget.value > 0 ? Math.round((currentTotal.value / monthlyBudget.value) * 100) : 0,
+  effectiveBudget.value > 0 ? Math.round((currentTotal.value / effectiveBudget.value) * 100) : 0,
 )
-const budgetRemaining = computed(() => monthlyBudget.value - currentTotal.value)
+const budgetRemaining = computed(() => effectiveBudget.value - currentTotal.value)
 
 const dayOfMonth = now.getDate()
 const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
 const expectedSoFar = computed(() => {
   // Pace against the configured budget; fall back to last month as a proxy.
-  const reference = monthlyBudget.value > 0 ? monthlyBudget.value : lastMonthTotal.value
+  const reference = effectiveBudget.value > 0 ? effectiveBudget.value : lastMonthTotal.value
   return reference ? (reference / daysInMonth) * dayOfMonth : 0
 })
 const onTrack = computed(() => currentTotal.value <= expectedSoFar.value)
@@ -181,9 +191,9 @@ const upcomingTotal7d = computed(() =>
   upcomingBills.value.filter((b) => b.daysUntil <= 7).reduce((s, b) => s + b.cost, 0),
 )
 
-// Recent 5 expenses for dashboard table
+// Recent 5 transactions (expenses + income) for dashboard table
 const recentExpenses = computed(() =>
-  [...(allExpenses.value ?? [])]
+  [...(allEntries.value ?? [])]
     .sort((a, b) => new Date(b.created_at ?? '').getTime() - new Date(a.created_at ?? '').getTime())
     .slice(0, 5)
 )
@@ -209,15 +219,19 @@ function formatDate(d?: string) {
           label="Budget"
           icon="pi pi-chart-pie"
           tone="brand"
-          :value="monthlyBudget > 0 ? money(monthlyBudget) : undefined"
-          :subtitle="monthlyBudget > 0 ? `${budgetPctUsed}% used this month` : 'No budget set — add one in Settings'"
+          :value="hasBudget ? money(effectiveBudget) : undefined"
+          :subtitle="hasBudget
+            ? (incomeTotal > 0
+              ? `${budgetPctUsed}% used · +${money(incomeTotal)} income`
+              : `${budgetPctUsed}% used this month`)
+            : 'No budget set — add one in Settings'"
         />
         <AppStatCard
           label="Left to spend"
           icon="pi pi-piggy-bank"
-          :tone="monthlyBudget > 0 && budgetRemaining < 0 ? 'brand' : 'positive'"
-          :value="monthlyBudget > 0 ? money(Math.max(budgetRemaining, 0)) : undefined"
-          :subtitle="monthlyBudget > 0
+          :tone="hasBudget && budgetRemaining < 0 ? 'brand' : 'positive'"
+          :value="hasBudget ? money(Math.max(budgetRemaining, 0)) : undefined"
+          :subtitle="hasBudget
             ? (budgetRemaining >= 0 ? 'Remaining this month' : `${money(-budgetRemaining)} over budget`)
             : 'Set a budget to track this'"
         />
@@ -252,7 +266,7 @@ function formatDate(d?: string) {
         <!-- Recent expenses -->
         <div class="bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] p-5" data-tour="recent-expenses">
           <div class="flex items-center justify-between mb-4">
-            <h2 class="text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em] text-[var(--jafa-text-muted)]">Recent Expenses</h2>
+            <h2 class="text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em] text-[var(--jafa-text-muted)]">Recent Transactions</h2>
             <RouterLink to="/expenses" class="text-[calc(12px*var(--jafa-text-scale,1))] text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)] flex items-center gap-1">
               View all <i class="pi pi-chevron-right text-[calc(10px*var(--jafa-text-scale,1))]" />
             </RouterLink>
@@ -277,6 +291,13 @@ function formatDate(d?: string) {
                   <span class="inline-flex items-center gap-2">
                     {{ exp.name }}
                     <span
+                      v-if="isIncome(exp)"
+                      class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 text-[calc(10px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em]"
+                    >
+                      <i class="pi pi-arrow-down-left text-[calc(9px*var(--jafa-text-scale,1))]" />
+                      income
+                    </span>
+                    <span
                       v-if="exp.recurringSchedule"
                       class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--jafa-accent)]/15 text-[var(--jafa-accent)] text-[calc(10px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em]"
                     >
@@ -286,7 +307,10 @@ function formatDate(d?: string) {
                   </span>
                 </td>
                 <td class="py-3.5 px-2"><ExpenseTagsCell :expense-id="exp.id" /></td>
-                <td class="py-3.5 px-2 text-right tabular-nums font-semibold text-[var(--jafa-text)]">−{{ money(exp.cost ?? exp.amount) }}</td>
+                <td
+                  class="py-3.5 px-2 text-right tabular-nums font-semibold"
+                  :class="isIncome(exp) ? 'text-emerald-500' : 'text-red-500'"
+                >{{ money(exp.cost ?? exp.amount) }}</td>
                 <td class="py-3.5 px-2 text-[var(--jafa-text-muted)] tabular-nums">{{ formatDate(exp.created_at) }}</td>
                 <td class="py-3.5 px-2 text-right">
                   <div class="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition">
@@ -306,7 +330,7 @@ function formatDate(d?: string) {
                 </td>
               </tr>
               <tr v-if="!recentExpenses.length">
-                <td colspan="5" class="py-8 text-center text-[var(--jafa-text-muted)]">No expenses yet</td>
+                <td colspan="5" class="py-8 text-center text-[var(--jafa-text-muted)]">No transactions yet</td>
               </tr>
             </tbody>
           </table>
@@ -405,7 +429,7 @@ function formatDate(d?: string) {
                     <span>{{ b.daysUntil === 0 ? 'Today' : b.daysUntil === 1 ? 'Tomorrow' : `in ${b.daysUntil}d` }}</span>
                   </div>
                 </div>
-                <div class="text-[calc(13px*var(--jafa-text-scale,1))] font-semibold text-[var(--jafa-text)] tabular-nums">−{{ money(b.cost) }}</div>
+                <div class="text-[calc(13px*var(--jafa-text-scale,1))] font-semibold text-[var(--jafa-text)] tabular-nums">{{ money(b.cost) }}</div>
               </div>
             </div>
             <div class="mt-auto pt-3 flex items-center justify-between border-t border-[var(--jafa-border)]">

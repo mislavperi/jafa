@@ -30,8 +30,17 @@ func (em *ExpenseMapper) MapToDomain(expense psql.Expense) (models.Expense, erro
 			StartDate:  expense.RecurrenceStartDate.Time.Format("2006-01-02"),
 		}
 	}
+	var installmentPlan *models.InstallmentPlan
+	if expense.InstallmentCount.Valid && expense.InstallmentCount.Int32 > 0 {
+		count := int(expense.InstallmentCount.Int32)
+		installmentPlan = &models.InstallmentPlan{
+			Count:         count,
+			PaymentAmount: float32(cost.Float64) / float32(count),
+		}
+	}
 	return models.Expense{
 		Id:                expense.ID,
+		Kind:              models.ExpenseKind(expense.Kind),
 		Name:              expense.Name,
 		Amount:            float32(amount.Float64),
 		Cost:              float32(cost.Float64),
@@ -40,6 +49,7 @@ func (em *ExpenseMapper) MapToDomain(expense psql.Expense) (models.Expense, erro
 		CreatedAt:         utils.FormatRFC3339(expense.CreatedAt),
 		UpdatedAt:         utils.FormatRFC3339(expense.UpdatedAt),
 		RecurringSchedule: recurringSchedule,
+		InstallmentPlan:   installmentPlan,
 	}, nil
 }
 

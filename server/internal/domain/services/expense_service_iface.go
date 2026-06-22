@@ -10,8 +10,10 @@ import (
 // Defined here so tests can substitute a lightweight stub.
 type ExpenseServicer interface {
 	GetAllExpenses(ctx context.Context, userID int64) ([]models.Expense, error)
+	GetAllEntries(ctx context.Context, userID int64) ([]models.Expense, error)
 	GetById(ctx context.Context, userID, id int64) (models.Expense, error)
 	GetTotalSpendThisMonth(ctx context.Context, userID int64) (models.MonthlyTotal, error)
+	GetTotalIncomeThisMonth(ctx context.Context, userID int64) (models.MonthlyTotal, error)
 	GetDailySpend(ctx context.Context, userID int64, months int32) ([]models.DailySpend, error)
 	GetFirstExpenseDate(ctx context.Context, userID int64) (string, error)
 	GetDailySpendForMonth(ctx context.Context, userID int64, year, month int32) ([]models.DailySpend, error)

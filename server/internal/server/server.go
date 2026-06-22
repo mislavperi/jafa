@@ -96,6 +96,7 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 
 	expenseGroup := protected.Group("/expense")
 	expenseGroup.GET("/", expenseController.GetAllExpenses())
+	expenseGroup.GET("/entries", expenseController.GetAllEntries())
 	expenseGroup.POST("/", expenseController.CreateExpense())
 	expenseGroup.POST("/bulk", expenseController.BulkCreateExpenses())
 	expenseGroup.GET("/:id", expenseController.GetExpenseById())
@@ -107,6 +108,7 @@ func (s *Server) registerRoutes(expenseController *controllers.ExpenseController
 
 	expenseStatsGroup := protected.Group("/expense-stats")
 	expenseStatsGroup.GET("/monthly-total", expenseController.GetTotalSpendThisMonth())
+	expenseStatsGroup.GET("/monthly-income", expenseController.GetTotalIncomeThisMonth())
 	expenseStatsGroup.GET("/daily-spend", expenseController.GetDailySpend())
 	expenseStatsGroup.GET("/first-expense-date", expenseController.GetFirstExpenseDate())
 	expenseStatsGroup.GET("/daily-spend-for-month", expenseController.GetDailySpendForMonth())

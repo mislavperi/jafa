@@ -5,19 +5,34 @@ LIMIT 1;
 
 -- name: GetAllExpenses :many
 SELECT * FROM expenses
-WHERE user_id=$1 AND is_deleted = false;
+WHERE user_id=$1 AND is_deleted = false AND kind = 'expense';
+
+-- name: GetAllEntries :many
+SELECT * FROM expenses
+WHERE user_id=$1 AND is_deleted = false
+ORDER BY created_at DESC;
 
 -- name: GetTotalSpendThisMonth :one
-SELECT COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+SELECT COALESCE(SUM(cost), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
+  AND kind = 'expense'
+  AND user_id = $1
+  AND created_at >= date_trunc('month', CURRENT_TIMESTAMP);
+
+-- name: GetTotalIncomeThisMonth :one
+SELECT COALESCE(SUM(cost), 0)::DECIMAL(10,3) AS total
+FROM expenses
+WHERE is_deleted = false
+  AND kind = 'income'
   AND user_id = $1
   AND created_at >= date_trunc('month', CURRENT_TIMESTAMP);
 
 -- name: GetDailySpend :many
-SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+SELECT created_at::date AS day, COALESCE(SUM(cost), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
+  AND kind = 'expense'
   AND user_id = sqlc.arg(user_id)::bigint
   AND created_at >= (date_trunc('month', CURRENT_TIMESTAMP) - (sqlc.arg(months)::int || ' months')::interval)
 GROUP BY created_at::date
@@ -27,14 +42,15 @@ ORDER BY day;
 SELECT *
 FROM expenses
 WHERE is_deleted = false
+  AND kind = 'expense'
   AND user_id = sqlc.arg(user_id)::bigint
   AND EXTRACT(YEAR FROM created_at) = sqlc.arg(year)::int
   AND EXTRACT(MONTH FROM created_at) = sqlc.arg(month)::int
 ORDER BY created_at;
 
 -- name: CreateExpense :one
-INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date, user_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO expenses (name, amount, cost, recurrence_interval, recurrence_day, recurrence_start_date, installment_count, user_id, kind)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
 -- name: UpdateExpense :one
@@ -45,6 +61,7 @@ SET name = $3,
     recurrence_interval = $6,
     recurrence_day = $7,
     recurrence_start_date = $8,
+    installment_count = $9,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2 AND is_deleted = false
 RETURNING *;
@@ -92,12 +109,13 @@ WHERE expense_id = sqlc.arg(expense_id)::bigint AND tag_id = sqlc.arg(tag_id)::b
 -- name: GetFirstExpenseDate :one
 SELECT COALESCE(TO_CHAR(MIN(created_at::date), 'YYYY-MM-DD'), '') AS first_date
 FROM expenses
-WHERE is_deleted = false AND user_id = $1;
+WHERE is_deleted = false AND kind = 'expense' AND user_id = $1;
 
 -- name: GetDailySpendForMonth :many
-SELECT created_at::date AS day, COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+SELECT created_at::date AS day, COALESCE(SUM(cost), 0)::DECIMAL(10,3) AS total
 FROM expenses
 WHERE is_deleted = false
+  AND kind = 'expense'
   AND user_id = sqlc.arg(user_id)::bigint
   AND EXTRACT(YEAR FROM created_at) = sqlc.arg(year)::int
   AND EXTRACT(MONTH FROM created_at) = sqlc.arg(month)::int
@@ -149,8 +167,8 @@ SELECT * FROM categories ORDER BY sort_order;
 
 -- name: GetMonthlySpend :many
 SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
-       COALESCE(SUM(amount), 0)::DECIMAL(10,3) AS total
+       COALESCE(SUM(cost), 0)::DECIMAL(10,3) AS total
 FROM expenses
-WHERE is_deleted = false AND user_id = $1
+WHERE is_deleted = false AND kind = 'expense' AND user_id = $1
 GROUP BY date_trunc('month', created_at)
 ORDER BY date_trunc('month', created_at);

@@ -11,12 +11,21 @@ export interface RecurringSchedule {
   startDate: string
 }
 
+export interface InstallmentPlan {
+  count: number
+  paymentAmount: number
+}
+
+export type ExpenseKind = 'expense' | 'income'
+
 export interface Expense {
   id: number
+  kind?: ExpenseKind
   name: string
   amount: number
   cost?: number
   recurringSchedule?: RecurringSchedule
+  installmentPlan?: InstallmentPlan
   created_at?: string
 }
 

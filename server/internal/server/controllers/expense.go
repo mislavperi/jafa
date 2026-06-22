@@ -57,13 +57,15 @@ func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 		}
 		expense, err := ec.expenseService.CreateExpense(ctx.Request.Context(), services.CreateExpenseInput{
 			UserID:            uid,
+			Kind:              req.Kind,
 			Name:              req.Name,
 			Amount:            *req.Amount,
 			Cost:              *req.Cost,
 			RecurringSchedule: recurringSchedule,
+			InstallmentCount:  req.InstallmentCount,
 		})
 		if err != nil {
-			if errors.Is(err, services.ErrInvalidStartDate) {
+			if errors.Is(err, services.ErrInvalidStartDate) || errors.Is(err, services.ErrInvalidInstallmentCount) || errors.Is(err, services.ErrInvalidKind) {
 				httperr.BadRequest(ctx, err.Error(), err)
 				return
 			}
@@ -120,6 +122,21 @@ func (ec *ExpenseController) GetAllExpenses() gin.HandlerFunc {
 	}
 }
 
+func (ec *ExpenseController) GetAllEntries() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, ok := requireUser(ctx)
+		if !ok {
+			return
+		}
+		entries, err := ec.expenseService.GetAllEntries(ctx.Request.Context(), uid)
+		if err != nil {
+			httperr.Internal(ctx, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, entries)
+	}
+}
+
 func (ec *ExpenseController) GetTotalSpendThisMonth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		uid, ok := requireUser(ctx)
@@ -127,6 +144,21 @@ func (ec *ExpenseController) GetTotalSpendThisMonth() gin.HandlerFunc {
 			return
 		}
 		total, err := ec.expenseService.GetTotalSpendThisMonth(ctx.Request.Context(), uid)
+		if err != nil {
+			httperr.Internal(ctx, err)
+			return
+		}
+		ctx.JSON(http.StatusOK, total)
+	}
+}
+
+func (ec *ExpenseController) GetTotalIncomeThisMonth() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		uid, ok := requireUser(ctx)
+		if !ok {
+			return
+		}
+		total, err := ec.expenseService.GetTotalIncomeThisMonth(ctx.Request.Context(), uid)
 		if err != nil {
 			httperr.Internal(ctx, err)
 			return
@@ -251,13 +283,14 @@ func (ec *ExpenseController) UpdateExpense() gin.HandlerFunc {
 			Amount:            *req.Amount,
 			Cost:              *req.Cost,
 			RecurringSchedule: recurringSchedule,
+			InstallmentCount:  req.InstallmentCount,
 		})
 		if err != nil {
 			if errors.Is(err, services.ErrExpenseNotFound) {
 				httperr.NotFound(ctx, "expense not found")
 				return
 			}
-			if errors.Is(err, services.ErrInvalidStartDate) {
+			if errors.Is(err, services.ErrInvalidStartDate) || errors.Is(err, services.ErrInvalidInstallmentCount) {
 				httperr.BadRequest(ctx, err.Error(), err)
 				return
 			}

@@ -1,13 +1,15 @@
-import type { Expense, MonthlyTotal, DailySpend, FirstExpenseDate, RecurringSchedule } from '../models/expense'
+import type { Expense, ExpenseKind, MonthlyTotal, DailySpend, FirstExpenseDate, RecurringSchedule } from '../models/expense'
 import { apiFetch } from '@/core/api'
 
 const BASE_URL = '/api/expense/'
 
 export async function createExpense(payload: {
   name: string
+  kind?: ExpenseKind
   amount: number
   cost: number
   recurringSchedule?: RecurringSchedule
+  installmentCount?: number
 }): Promise<Expense> {
   const response = await apiFetch(BASE_URL, {
     method: 'POST',
@@ -43,9 +45,11 @@ export async function updateExpense(
   id: number,
   payload: {
     name: string
+    kind?: ExpenseKind
     amount: number
     cost: number
     recurringSchedule?: RecurringSchedule
+    installmentCount?: number
   },
 ): Promise<Expense> {
   const response = await apiFetch(`${BASE_URL}${id}`, {
@@ -74,6 +78,16 @@ export async function getAllExpenses(): Promise<Expense[]> {
   return response.json()
 }
 
+// getAllEntries returns both expenses and income, newest first — for the
+// transactions table where the two kinds are shown together.
+export async function getAllEntries(): Promise<Expense[]> {
+  const response = await apiFetch(`${BASE_URL}entries`)
+  if (!response.ok) {
+    throw new Error('Failed to fetch entries')
+  }
+  return response.json()
+}
+
 export async function getExpenseById(id: number): Promise<Expense> {
   const response = await apiFetch(`${BASE_URL}${id}`)
   if (!response.ok) {
@@ -86,6 +100,14 @@ export async function getMonthlyTotal(): Promise<MonthlyTotal> {
   const response = await apiFetch('/api/expense-stats/monthly-total')
   if (!response.ok) {
     throw new Error('Failed to fetch monthly total')
+  }
+  return response.json()
+}
+
+export async function getMonthlyIncome(): Promise<MonthlyTotal> {
+  const response = await apiFetch('/api/expense-stats/monthly-income')
+  if (!response.ok) {
+    throw new Error('Failed to fetch monthly income')
   }
   return response.json()
 }

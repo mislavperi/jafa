@@ -13,6 +13,8 @@ import {
   updateExpense,
   deleteExpense,
   getMonthlyTotal,
+  getMonthlyIncome,
+  getAllEntries,
   getDailySpend,
   bulkCreateExpenses,
 } from '@/modules/expense/api/expense'
@@ -85,6 +87,27 @@ describe('expense API', () => {
         'Failed to create expense',
       )
     })
+
+    it('sends installmentCount in the request body when splitting', async () => {
+      const created = {
+        id: 11,
+        name: 'Phone',
+        amount: 1,
+        cost: 200,
+        installmentPlan: { count: 4, paymentAmount: 50 },
+      }
+      mockFetch.mockResolvedValue(okResponse(created))
+
+      const result = await createExpense({ name: 'Phone', amount: 1, cost: 200, installmentCount: 4 })
+      expect(result).toEqual(created)
+
+      const [, options] = mockFetch.mock.calls[0]!
+      expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
+        name: 'Phone',
+        cost: 200,
+        installmentCount: 4,
+      })
+    })
   })
 
   describe('updateExpense', () => {
@@ -137,6 +160,38 @@ describe('expense API', () => {
     it('throws on non-ok response', async () => {
       mockFetch.mockResolvedValue(failResponse())
       await expect(getMonthlyTotal()).rejects.toThrow('Failed to fetch monthly total')
+    })
+  })
+
+  describe('getAllEntries', () => {
+    it('returns entries on success', async () => {
+      const entries = [{ id: 1, name: 'Salary', kind: 'income', amount: 1, cost: 2500 }]
+      mockFetch.mockResolvedValue(okResponse(entries))
+
+      const result = await getAllEntries()
+      expect(result).toEqual(entries)
+      expect(mockFetch).toHaveBeenCalledWith('/api/expense/entries')
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(failResponse())
+      await expect(getAllEntries()).rejects.toThrow('Failed to fetch entries')
+    })
+  })
+
+  describe('getMonthlyIncome', () => {
+    it('returns income on success', async () => {
+      const total = { total: 2500 }
+      mockFetch.mockResolvedValue(okResponse(total))
+
+      const result = await getMonthlyIncome()
+      expect(result).toEqual(total)
+      expect(mockFetch).toHaveBeenCalledWith('/api/expense-stats/monthly-income')
+    })
+
+    it('throws on non-ok response', async () => {
+      mockFetch.mockResolvedValue(failResponse())
+      await expect(getMonthlyIncome()).rejects.toThrow('Failed to fetch monthly income')
     })
   })
 

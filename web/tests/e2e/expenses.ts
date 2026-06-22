@@ -78,6 +78,39 @@ describe('Expenses List Page', function () {
         .assert.textContains('.text-red-500', 'required')
     })
 
+    it('shows split payment option', function (browser) {
+      browser.assert.textContains('body', 'Split Payment')
+    })
+
+    it('shows number-of-payments field after enabling split', function (browser) {
+      browser
+        .click('[data-testid="split-toggle"]')
+        .pause(300)
+        .assert.textContains('body', 'Number of Payments')
+        .assert.elementPresent('[data-testid="installment-count"]')
+        .assert.elementPresent('[data-testid="per-payment"]')
+    })
+
+    it('computes the per-payment amount from cost and payment count', function (browser) {
+      browser
+        .clearValue('input[type="text"]')
+        .setValue('input[type="text"]', 'Phone')
+        .setValue('input[type="number"]', '200')
+        .clearValue('[data-testid="installment-count"]')
+        .setValue('[data-testid="installment-count"]', '4')
+        .pause(300)
+        // $200 split into 4 → $50.00 × 4
+        .assert.textContains('[data-testid="per-payment"]', '50.00')
+        .assert.textContains('[data-testid="per-payment"]', '× 4')
+    })
+
+    it('hides number-of-payments field after disabling split', function (browser) {
+      browser
+        .click('[data-testid="split-toggle"]')
+        .pause(300)
+        .assert.not.textContains('body', 'Number of Payments')
+    })
+
     it('closes the modal', function (browser) {
       browser
         .click('[aria-label="Close"]')

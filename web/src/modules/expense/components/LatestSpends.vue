@@ -13,7 +13,7 @@ import AddExpenseModal from './AddExpenseModal.vue'
 import type { Expense, Tag } from '../models/expense'
 import { CHART_COLORS } from '../constants'
 
-import { useExpenses, useFirstExpenseDate, useExpensesByMonth, useDeleteExpense } from '../composables/useExpenses'
+import { useAllEntries, useFirstExpenseDate, useExpensesByMonth, useDeleteExpense } from '../composables/useExpenses'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useThemeStore } from '@/stores/theme'
 import { currencySymbol, formatCurrency } from '@/core/currency'
@@ -26,7 +26,9 @@ import { useAllTags } from '../composables/useTags'
 import { getTagsForExpense } from '../api/tag'
 import ExpenseTagsCell from './ExpenseTagsCell.vue'
 
-const { data: allExpenses, isLoading: isLoadingExpenses } = useExpenses()
+// Table shows both expenses and income; the kind drives the sign/colour.
+const { data: allExpenses, isLoading: isLoadingExpenses } = useAllEntries()
+const isIncome = (e: Expense) => e.kind === 'income'
 const { data: rawTags } = useAllTags()
 const allTags = computed(() => {
   if (!rawTags.value) return []
@@ -40,6 +42,12 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 const showDropdown = ref(false)
 const tableSearch = ref('')
 const selectedFilterTagIds = ref<Set<number>>(new Set())
+const kindFilter = ref<'all' | 'expense' | 'income'>('all')
+const KIND_FILTERS: { value: 'all' | 'expense' | 'income'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'expense', label: 'Expenses' },
+  { value: 'income', label: 'Income' },
+]
 
 // Tag data — lazy: enabled only once user picks a tag, no upfront N+1 cost
 const expenseTagQueries = useQueries({
@@ -115,6 +123,10 @@ onUnmounted(() => document.removeEventListener('mousedown', handleClickOutside))
 const filteredExpenses = computed<Expense[]>(() => {
   const expenses = allExpenses.value ?? []
   let result = expenses
+
+  if (kindFilter.value !== 'all') {
+    result = result.filter((e) => (e.kind ?? 'expense') === kindFilter.value)
+  }
 
   if (tableSearch.value.trim()) {
     const q = tableSearch.value.toLowerCase()
@@ -327,7 +339,7 @@ function syncRowsFromNames(names: Set<string>) {
 <template>
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
     <Panel
-      header="RECENT EXPENSES"
+      header="TRANSACTIONS"
       class="h-full flex flex-col bg-[var(--jafa-surface)] border border-[var(--jafa-border)] rounded-[14px] overflow-hidden"
       :pt="{
         root: { class: '!bg-[var(--jafa-surface)] !border-[var(--jafa-border)]' },
@@ -336,6 +348,23 @@ function syncRowsFromNames(names: Set<string>) {
         content: { class: 'flex-1 flex flex-col min-h-0 !p-0 !bg-[var(--jafa-surface)] overflow-hidden' }
       }"
     >
+      <!-- Kind filter: all / expenses / income -->
+      <div class="flex items-center gap-1 px-3 pt-3 pb-1 shrink-0">
+        <button
+          v-for="f in KIND_FILTERS"
+          :key="f.value"
+          type="button"
+          :data-testid="`kind-filter-${f.value}`"
+          class="px-3 py-1 rounded-full text-[calc(11px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em] transition border"
+          :class="kindFilter === f.value
+            ? 'bg-[var(--jafa-accent)] text-[var(--jafa-text)] border-[var(--jafa-accent)]'
+            : 'bg-transparent border-[var(--jafa-border)] text-[var(--jafa-text-muted)] hover:text-[var(--jafa-text)]'"
+          @click="kindFilter = f.value"
+        >
+          {{ f.label }}
+        </button>
+      </div>
+
       <!-- Smart search bar -->
       <div ref="searchWrapperRef" class="relative px-3 py-2 border-b border-surface shrink-0">
         <div
@@ -453,10 +482,17 @@ function syncRowsFromNames(names: Set<string>) {
       >
         <Column selectionMode="multiple" style="width: 2.75rem; padding-left: 1rem; padding-right: 0" />
 
-        <Column field="name" header="Expense Name" sortable>
+        <Column field="name" header="Name" sortable>
           <template #body="{ data }">
             <span class="inline-flex items-center gap-2 font-medium text-[calc(13.5px*var(--jafa-text-scale,1))] text-[var(--jafa-text)]">
               {{ data.name }}
+              <span
+                v-if="isIncome(data)"
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500 text-[calc(10px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em]"
+              >
+                <i class="pi pi-arrow-down-left text-[calc(9px*var(--jafa-text-scale,1))]" />
+                income
+              </span>
               <span
                 v-if="data.recurringSchedule"
                 class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--jafa-accent)]/15 text-[var(--jafa-accent)] text-[calc(10px*var(--jafa-text-scale,1))] font-semibold uppercase tracking-[0.06em]"
@@ -476,7 +512,10 @@ function syncRowsFromNames(names: Set<string>) {
 
         <Column field="amount" header="Amount" sortable style="width: 8rem">
           <template #body="{ data }">
-            <span class="font-semibold tabular-nums text-[var(--jafa-text)]">−{{ money(data.cost ?? data.amount) }}</span>
+            <span
+              class="font-semibold tabular-nums"
+              :class="isIncome(data) ? 'text-emerald-500' : 'text-red-500'"
+            >{{ money(data.cost ?? data.amount) }}</span>
           </template>
         </Column>
 
@@ -513,7 +552,7 @@ function syncRowsFromNames(names: Set<string>) {
             <div class="w-10 h-10 rounded-full bg-[var(--jafa-surface-3)] flex items-center justify-center">
               <i class="pi pi-wallet text-[calc(16px*var(--jafa-text-scale,1))]" />
             </div>
-            <div class="text-[calc(13px*var(--jafa-text-scale,1))]">No expenses to show</div>
+            <div class="text-[calc(13px*var(--jafa-text-scale,1))]">No transactions to show</div>
           </div>
         </template>
       </DataTable>
