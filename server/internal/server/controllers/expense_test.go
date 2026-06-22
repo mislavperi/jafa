@@ -10,8 +10,12 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	"github.com/mislavperi/jafa/server/internal/domain/services"
+	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 	"github.com/mislavperi/jafa/server/internal/server/middleware"
 )
 
@@ -19,67 +23,82 @@ func init() {
 	gin.SetMode(gin.TestMode)
 }
 
-// stubExpenseService implements services.ExpenseServicer for tests.
-type stubExpenseService struct {
-	getAllExpensesFn     func(userID int64) ([]models.Expense, error)
-	getAllEntriesFn      func(userID int64) ([]models.Expense, error)
-	getByIdFn            func(userID, id int64) (models.Expense, error)
-	getTotalFn           func(userID int64) (models.MonthlyTotal, error)
-	getIncomeFn          func(userID int64) (models.MonthlyTotal, error)
-	getDailySpendFn      func(userID int64, months int32) ([]models.DailySpend, error)
-	getFirstDateFn       func(userID int64) (string, error)
-	getDailyForMonthFn   func(userID int64, year, month int32) ([]models.DailySpend, error)
-	getExpensesByMonthFn func(userID int64, year, month int32) ([]models.Expense, error)
-	createExpenseFn      func(input services.CreateExpenseInput) (models.Expense, error)
-	bulkCreateExpensesFn func(userID int64, items []services.BulkExpenseItem) ([]models.Expense, error)
-	updateExpenseFn      func(input services.UpdateExpenseInput) (models.Expense, error)
-	deleteExpenseFn      func(userID, id int64) error
+// Ensure stubExpenseQuerier satisfies the interface at compile time.
+var _ services.ExpenseQuerier = (*stubExpenseQuerier)(nil)
+
+// stubExpenseQuerier implements services.ExpenseQuerier so handlers run against a
+// real services.ExpenseService. Only the methods a test exercises need a stub fn;
+// the rest return zero values.
+type stubExpenseQuerier struct {
+	getAllExpensesFn func(ctx context.Context, userID int64) ([]psql.Expense, error)
+	softDeleteFn     func(ctx context.Context, arg psql.SoftDeleteExpenseParams) (int64, error)
+	updateExpenseFn  func(ctx context.Context, arg psql.UpdateExpenseParams) (psql.Expense, error)
+	createExpenseFn  func(ctx context.Context, arg psql.CreateExpenseParams) (psql.Expense, error)
+	getDailySpendFn  func(ctx context.Context, arg psql.GetDailySpendParams) ([]psql.GetDailySpendRow, error)
+	getExpenseByIdFn func(ctx context.Context, arg psql.GetExpenseByIdParams) (psql.Expense, error)
 }
 
-func (s *stubExpenseService) GetAllExpenses(_ context.Context, userID int64) ([]models.Expense, error) {
-	return s.getAllExpensesFn(userID)
+func (s *stubExpenseQuerier) GetAllExpenses(ctx context.Context, userID int64) ([]psql.Expense, error) {
+	return s.getAllExpensesFn(ctx, userID)
 }
-func (s *stubExpenseService) GetAllEntries(_ context.Context, userID int64) ([]models.Expense, error) {
-	if s.getAllEntriesFn != nil {
-		return s.getAllEntriesFn(userID)
-	}
+func (s *stubExpenseQuerier) GetAllEntries(_ context.Context, _ int64) ([]psql.Expense, error) {
 	return nil, nil
 }
-func (s *stubExpenseService) GetById(_ context.Context, userID, id int64) (models.Expense, error) {
-	return s.getByIdFn(userID, id)
+func (s *stubExpenseQuerier) GetExpenseById(ctx context.Context, arg psql.GetExpenseByIdParams) (psql.Expense, error) {
+	return s.getExpenseByIdFn(ctx, arg)
 }
-func (s *stubExpenseService) GetTotalSpendThisMonth(_ context.Context, userID int64) (models.MonthlyTotal, error) {
-	return s.getTotalFn(userID)
+func (s *stubExpenseQuerier) CreateExpense(ctx context.Context, arg psql.CreateExpenseParams) (psql.Expense, error) {
+	return s.createExpenseFn(ctx, arg)
 }
-func (s *stubExpenseService) GetTotalIncomeThisMonth(_ context.Context, userID int64) (models.MonthlyTotal, error) {
-	if s.getIncomeFn != nil {
-		return s.getIncomeFn(userID)
+func (s *stubExpenseQuerier) UpdateExpense(ctx context.Context, arg psql.UpdateExpenseParams) (psql.Expense, error) {
+	return s.updateExpenseFn(ctx, arg)
+}
+func (s *stubExpenseQuerier) SoftDeleteExpense(ctx context.Context, arg psql.SoftDeleteExpenseParams) (int64, error) {
+	return s.softDeleteFn(ctx, arg)
+}
+func (s *stubExpenseQuerier) GetTotalSpendThisMonth(_ context.Context, _ int64) (pgtype.Numeric, error) {
+	return pgtype.Numeric{}, nil
+}
+func (s *stubExpenseQuerier) GetTotalIncomeThisMonth(_ context.Context, _ int64) (pgtype.Numeric, error) {
+	return pgtype.Numeric{}, nil
+}
+func (s *stubExpenseQuerier) GetDailySpend(ctx context.Context, arg psql.GetDailySpendParams) ([]psql.GetDailySpendRow, error) {
+	return s.getDailySpendFn(ctx, arg)
+}
+func (s *stubExpenseQuerier) GetExpensesByMonth(_ context.Context, _ psql.GetExpensesByMonthParams) ([]psql.Expense, error) {
+	return nil, nil
+}
+func (s *stubExpenseQuerier) GetFirstExpenseDate(_ context.Context, _ int64) (interface{}, error) {
+	return nil, nil
+}
+func (s *stubExpenseQuerier) GetDailySpendForMonth(_ context.Context, _ psql.GetDailySpendForMonthParams) ([]psql.GetDailySpendForMonthRow, error) {
+	return nil, nil
+}
+func (s *stubExpenseQuerier) UpsertTag(_ context.Context, _ psql.UpsertTagParams) (psql.Tag, error) {
+	return psql.Tag{}, nil
+}
+func (s *stubExpenseQuerier) AddTagToExpense(_ context.Context, _ psql.AddTagToExpenseParams) error {
+	return nil
+}
+func (s *stubExpenseQuerier) WithTx(_ pgx.Tx) services.ExpenseQuerier { return s }
+
+// newExpenseController builds a controller backed by a real ExpenseService over
+// the given stub querier.
+func newExpenseController(q services.ExpenseQuerier) *ExpenseController {
+	return NewExpenseController(&services.ExpenseService{
+		Queries: q,
+		Mapper:  mappers.NewExpenseMapper(),
+	})
+}
+
+// numeric builds a pgtype.Numeric from a decimal string, like the DB returns.
+func numeric(t *testing.T, s string) pgtype.Numeric {
+	t.Helper()
+	var n pgtype.Numeric
+	if err := n.Scan(s); err != nil {
+		t.Fatalf("scan numeric %q: %v", s, err)
 	}
-	return models.MonthlyTotal{}, nil
-}
-func (s *stubExpenseService) GetDailySpend(_ context.Context, userID int64, months int32) ([]models.DailySpend, error) {
-	return s.getDailySpendFn(userID, months)
-}
-func (s *stubExpenseService) GetFirstExpenseDate(_ context.Context, userID int64) (string, error) {
-	return s.getFirstDateFn(userID)
-}
-func (s *stubExpenseService) GetDailySpendForMonth(_ context.Context, userID int64, year, month int32) ([]models.DailySpend, error) {
-	return s.getDailyForMonthFn(userID, year, month)
-}
-func (s *stubExpenseService) GetExpensesByMonth(_ context.Context, userID int64, year, month int32) ([]models.Expense, error) {
-	return s.getExpensesByMonthFn(userID, year, month)
-}
-func (s *stubExpenseService) CreateExpense(_ context.Context, input services.CreateExpenseInput) (models.Expense, error) {
-	return s.createExpenseFn(input)
-}
-func (s *stubExpenseService) BulkCreateExpenses(_ context.Context, userID int64, items []services.BulkExpenseItem) ([]models.Expense, error) {
-	return s.bulkCreateExpensesFn(userID, items)
-}
-func (s *stubExpenseService) UpdateExpense(_ context.Context, input services.UpdateExpenseInput) (models.Expense, error) {
-	return s.updateExpenseFn(input)
-}
-func (s *stubExpenseService) DeleteExpense(_ context.Context, userID, id int64) error {
-	return s.deleteExpenseFn(userID, id)
+	return n
 }
 
 // newRouter builds a test router that injects a fixed user ID into the context.
@@ -105,16 +124,15 @@ func jsonBody(t *testing.T, v any) *bytes.Buffer {
 // ---- GetAllExpenses ----
 
 func TestGetAllExpenses_OK(t *testing.T) {
-	expenses := []models.Expense{{Id: 1, Name: "Coffee", Amount: 3.5}}
-	svc := &stubExpenseService{
-		getAllExpensesFn: func(userID int64) ([]models.Expense, error) {
+	stub := &stubExpenseQuerier{
+		getAllExpensesFn: func(_ context.Context, userID int64) ([]psql.Expense, error) {
 			if userID != 42 {
 				t.Errorf("userID = %d, want 42", userID)
 			}
-			return expenses, nil
+			return []psql.Expense{{ID: 1, Name: "Coffee", Amount: numeric(t, "3.50"), Cost: numeric(t, "3.50")}}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(42, http.MethodGet, "/expense/", ec.GetAllExpenses())
 
 	w := httptest.NewRecorder()
@@ -133,12 +151,12 @@ func TestGetAllExpenses_OK(t *testing.T) {
 }
 
 func TestGetAllExpenses_ServiceError(t *testing.T) {
-	svc := &stubExpenseService{
-		getAllExpensesFn: func(_ int64) ([]models.Expense, error) {
+	stub := &stubExpenseQuerier{
+		getAllExpensesFn: func(_ context.Context, _ int64) ([]psql.Expense, error) {
 			return nil, errors.New("db down")
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodGet, "/expense/", ec.GetAllExpenses())
 
 	w := httptest.NewRecorder()
@@ -150,7 +168,7 @@ func TestGetAllExpenses_ServiceError(t *testing.T) {
 }
 
 func TestGetAllExpenses_Unauthenticated(t *testing.T) {
-	ec := NewExpenseController(&stubExpenseService{})
+	ec := newExpenseController(&stubExpenseQuerier{})
 	r := gin.New() // no user injected
 	r.GET("/expense/", ec.GetAllExpenses())
 
@@ -165,15 +183,15 @@ func TestGetAllExpenses_Unauthenticated(t *testing.T) {
 // ---- DeleteExpense ----
 
 func TestDeleteExpense_OK(t *testing.T) {
-	svc := &stubExpenseService{
-		deleteExpenseFn: func(userID, id int64) error {
-			if userID != 7 || id != 5 {
-				t.Errorf("DeleteExpense(%d,%d), want (7,5)", userID, id)
+	stub := &stubExpenseQuerier{
+		softDeleteFn: func(_ context.Context, arg psql.SoftDeleteExpenseParams) (int64, error) {
+			if arg.UserID != 7 || arg.ID != 5 {
+				t.Errorf("SoftDelete(user=%d,id=%d), want (7,5)", arg.UserID, arg.ID)
 			}
-			return nil
+			return 1, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(7, http.MethodDelete, "/expense/:id", ec.DeleteExpense())
 
 	w := httptest.NewRecorder()
@@ -185,10 +203,10 @@ func TestDeleteExpense_OK(t *testing.T) {
 }
 
 func TestDeleteExpense_NotFound(t *testing.T) {
-	svc := &stubExpenseService{
-		deleteExpenseFn: func(_, _ int64) error { return services.ErrExpenseNotFound },
+	stub := &stubExpenseQuerier{
+		softDeleteFn: func(_ context.Context, _ psql.SoftDeleteExpenseParams) (int64, error) { return 0, nil },
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodDelete, "/expense/:id", ec.DeleteExpense())
 
 	w := httptest.NewRecorder()
@@ -200,7 +218,7 @@ func TestDeleteExpense_NotFound(t *testing.T) {
 }
 
 func TestDeleteExpense_InvalidID(t *testing.T) {
-	ec := NewExpenseController(&stubExpenseService{})
+	ec := newExpenseController(&stubExpenseQuerier{})
 	r := newRouter(1, http.MethodDelete, "/expense/:id", ec.DeleteExpense())
 
 	w := httptest.NewRecorder()
@@ -214,12 +232,12 @@ func TestDeleteExpense_InvalidID(t *testing.T) {
 // ---- UpdateExpense ----
 
 func TestUpdateExpense_NotFound(t *testing.T) {
-	svc := &stubExpenseService{
-		updateExpenseFn: func(_ services.UpdateExpenseInput) (models.Expense, error) {
-			return models.Expense{}, services.ErrExpenseNotFound
+	stub := &stubExpenseQuerier{
+		updateExpenseFn: func(_ context.Context, _ psql.UpdateExpenseParams) (psql.Expense, error) {
+			return psql.Expense{}, pgx.ErrNoRows
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodPatch, "/expense/:id", ec.UpdateExpense())
 
 	body := jsonBody(t, map[string]any{"name": "X", "amount": 1.0, "cost": 1.0})
@@ -234,7 +252,7 @@ func TestUpdateExpense_NotFound(t *testing.T) {
 }
 
 func TestUpdateExpense_BadBody(t *testing.T) {
-	ec := NewExpenseController(&stubExpenseService{})
+	ec := newExpenseController(&stubExpenseQuerier{})
 	r := newRouter(1, http.MethodPatch, "/expense/:id", ec.UpdateExpense())
 
 	req := httptest.NewRequest(http.MethodPatch, "/expense/10", bytes.NewBufferString("{bad json"))
@@ -248,16 +266,15 @@ func TestUpdateExpense_BadBody(t *testing.T) {
 }
 
 func TestUpdateExpense_OK(t *testing.T) {
-	updated := models.Expense{Id: 10, Name: "Dinner", Amount: 25}
-	svc := &stubExpenseService{
-		updateExpenseFn: func(inp services.UpdateExpenseInput) (models.Expense, error) {
-			if inp.ID != 10 || inp.UserID != 3 {
-				t.Errorf("wrong input: %+v", inp)
+	stub := &stubExpenseQuerier{
+		updateExpenseFn: func(_ context.Context, arg psql.UpdateExpenseParams) (psql.Expense, error) {
+			if arg.ID != 10 || arg.UserID != 3 {
+				t.Errorf("wrong params: %+v", arg)
 			}
-			return updated, nil
+			return psql.Expense{ID: 10, Name: "Dinner", Amount: numeric(t, "25.00"), Cost: numeric(t, "25.00")}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(3, http.MethodPatch, "/expense/:id", ec.UpdateExpense())
 
 	body := jsonBody(t, map[string]any{"name": "Dinner", "amount": 25.0, "cost": 25.0})
@@ -279,16 +296,15 @@ func TestUpdateExpense_OK(t *testing.T) {
 // ---- CreateExpense ----
 
 func TestCreateExpense_OK(t *testing.T) {
-	created := models.Expense{Id: 99, Name: "Groceries", Amount: 50}
-	svc := &stubExpenseService{
-		createExpenseFn: func(inp services.CreateExpenseInput) (models.Expense, error) {
-			if inp.Name != "Groceries" {
-				t.Errorf("Name = %q, want Groceries", inp.Name)
+	stub := &stubExpenseQuerier{
+		createExpenseFn: func(_ context.Context, arg psql.CreateExpenseParams) (psql.Expense, error) {
+			if arg.Name != "Groceries" {
+				t.Errorf("Name = %q, want Groceries", arg.Name)
 			}
-			return created, nil
+			return psql.Expense{ID: 99, Name: "Groceries", Amount: numeric(t, "50.00"), Cost: numeric(t, "50.00")}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
 
 	body := jsonBody(t, map[string]any{"name": "Groceries", "amount": 50.0, "cost": 50.0})
@@ -303,15 +319,20 @@ func TestCreateExpense_OK(t *testing.T) {
 }
 
 func TestCreateExpense_WithInstallments(t *testing.T) {
-	var capturedCount *int
-	created := models.Expense{Id: 1, Name: "Phone", Cost: 200, InstallmentPlan: &models.InstallmentPlan{Count: 4, PaymentAmount: 50}}
-	svc := &stubExpenseService{
-		createExpenseFn: func(inp services.CreateExpenseInput) (models.Expense, error) {
-			capturedCount = inp.InstallmentCount
-			return created, nil
+	var capturedCount pgtype.Int4
+	stub := &stubExpenseQuerier{
+		createExpenseFn: func(_ context.Context, arg psql.CreateExpenseParams) (psql.Expense, error) {
+			capturedCount = arg.InstallmentCount
+			return psql.Expense{
+				ID:               1,
+				Name:             "Phone",
+				Amount:           numeric(t, "1.00"),
+				Cost:             numeric(t, "200.00"),
+				InstallmentCount: arg.InstallmentCount,
+			}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
 
 	body := jsonBody(t, map[string]any{"name": "Phone", "amount": 1.0, "cost": 200.0, "installmentCount": 4})
@@ -323,8 +344,8 @@ func TestCreateExpense_WithInstallments(t *testing.T) {
 	if w.Code != http.StatusCreated {
 		t.Errorf("status = %d, want 201", w.Code)
 	}
-	if capturedCount == nil || *capturedCount != 4 {
-		t.Errorf("InstallmentCount = %v, want 4", capturedCount)
+	if !capturedCount.Valid || capturedCount.Int32 != 4 {
+		t.Errorf("InstallmentCount param = %+v, want {4 true}", capturedCount)
 	}
 	var got models.Expense
 	json.Unmarshal(w.Body.Bytes(), &got)
@@ -334,13 +355,13 @@ func TestCreateExpense_WithInstallments(t *testing.T) {
 }
 
 func TestCreateExpense_InstallmentCountTooLow(t *testing.T) {
-	svc := &stubExpenseService{
-		createExpenseFn: func(_ services.CreateExpenseInput) (models.Expense, error) {
-			t.Fatal("service should not be reached; binding rejects count<2")
-			return models.Expense{}, nil
+	stub := &stubExpenseQuerier{
+		createExpenseFn: func(_ context.Context, _ psql.CreateExpenseParams) (psql.Expense, error) {
+			t.Fatal("query should not be reached; binding rejects count<2")
+			return psql.Expense{}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
 
 	body := jsonBody(t, map[string]any{"name": "Phone", "amount": 1.0, "cost": 200.0, "installmentCount": 1})
@@ -354,16 +375,25 @@ func TestCreateExpense_InstallmentCountTooLow(t *testing.T) {
 	}
 }
 
-func TestCreateExpense_InvalidInstallmentFromService(t *testing.T) {
-	svc := &stubExpenseService{
-		createExpenseFn: func(_ services.CreateExpenseInput) (models.Expense, error) {
-			return models.Expense{}, services.ErrInvalidInstallmentCount
+// TestCreateExpense_InvalidStartDate exercises the controller's mapping of a
+// service-side validation error (ErrInvalidStartDate) to 400. The real service
+// rejects the unparseable start date before reaching the querier.
+func TestCreateExpense_InvalidStartDate(t *testing.T) {
+	stub := &stubExpenseQuerier{
+		createExpenseFn: func(_ context.Context, _ psql.CreateExpenseParams) (psql.Expense, error) {
+			t.Fatal("query should not be reached; service rejects bad start date")
+			return psql.Expense{}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
 
-	body := jsonBody(t, map[string]any{"name": "Phone", "amount": 1.0, "cost": 200.0, "installmentCount": 4})
+	body := jsonBody(t, map[string]any{
+		"name": "Rent", "amount": 1.0, "cost": 100.0,
+		"recurringSchedule": map[string]any{
+			"interval": "monthly", "dayOfMonth": 1, "startDate": "not-a-date",
+		},
+	})
 	req := httptest.NewRequest(http.MethodPost, "/expense/", body)
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
@@ -375,7 +405,7 @@ func TestCreateExpense_InvalidInstallmentFromService(t *testing.T) {
 }
 
 func TestCreateExpense_MissingFields(t *testing.T) {
-	ec := NewExpenseController(&stubExpenseService{})
+	ec := newExpenseController(&stubExpenseQuerier{})
 	r := newRouter(1, http.MethodPost, "/expense/", ec.CreateExpense())
 
 	body := jsonBody(t, map[string]any{"name": "X"}) // missing amount and cost
@@ -392,7 +422,7 @@ func TestCreateExpense_MissingFields(t *testing.T) {
 // ---- GetDailySpend ----
 
 func TestGetDailySpend_InvalidMonths(t *testing.T) {
-	ec := NewExpenseController(&stubExpenseService{})
+	ec := newExpenseController(&stubExpenseQuerier{})
 	r := newRouter(1, http.MethodGet, "/expense-stats/daily-spend", ec.GetDailySpend())
 
 	w := httptest.NewRecorder()
@@ -404,16 +434,15 @@ func TestGetDailySpend_InvalidMonths(t *testing.T) {
 }
 
 func TestGetDailySpend_OK(t *testing.T) {
-	rows := []models.DailySpend{{Day: "2024-06-01", Total: 30}}
-	svc := &stubExpenseService{
-		getDailySpendFn: func(_ int64, months int32) ([]models.DailySpend, error) {
-			if months != 3 {
-				t.Errorf("months = %d, want 3", months)
+	stub := &stubExpenseQuerier{
+		getDailySpendFn: func(_ context.Context, arg psql.GetDailySpendParams) ([]psql.GetDailySpendRow, error) {
+			if arg.Months != 3 {
+				t.Errorf("months = %d, want 3", arg.Months)
 			}
-			return rows, nil
+			return []psql.GetDailySpendRow{{Day: pgtype.Date{Valid: true}, Total: numeric(t, "30.00")}}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodGet, "/expense-stats/daily-spend", ec.GetDailySpend())
 
 	w := httptest.NewRecorder()
@@ -427,12 +456,12 @@ func TestGetDailySpend_OK(t *testing.T) {
 // ---- GetExpenseById ----
 
 func TestGetExpenseById_NotFound(t *testing.T) {
-	svc := &stubExpenseService{
-		getByIdFn: func(_, _ int64) (models.Expense, error) {
-			return models.Expense{}, services.ErrExpenseNotFound
+	stub := &stubExpenseQuerier{
+		getExpenseByIdFn: func(_ context.Context, _ psql.GetExpenseByIdParams) (psql.Expense, error) {
+			return psql.Expense{}, pgx.ErrNoRows
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodGet, "/expense/:id", ec.GetExpenseById())
 
 	w := httptest.NewRecorder()
@@ -444,12 +473,12 @@ func TestGetExpenseById_NotFound(t *testing.T) {
 }
 
 func TestGetExpenseById_OK(t *testing.T) {
-	svc := &stubExpenseService{
-		getByIdFn: func(_, id int64) (models.Expense, error) {
-			return models.Expense{Id: id, Name: "Lunch"}, nil
+	stub := &stubExpenseQuerier{
+		getExpenseByIdFn: func(_ context.Context, arg psql.GetExpenseByIdParams) (psql.Expense, error) {
+			return psql.Expense{ID: arg.ID, Name: "Lunch", Amount: numeric(t, "0.00"), Cost: numeric(t, "0.00")}, nil
 		},
 	}
-	ec := NewExpenseController(svc)
+	ec := newExpenseController(stub)
 	r := newRouter(1, http.MethodGet, "/expense/:id", ec.GetExpenseById())
 
 	w := httptest.NewRecorder()

@@ -42,6 +42,39 @@ func resolveKind(kind string) (string, error) {
 	}
 }
 
+// ExpenseQuerier is the subset of psql.Queries used by ExpenseService.
+// Extracted as an interface to allow test doubles.
+type ExpenseQuerier interface {
+	GetAllExpenses(ctx context.Context, userID int64) ([]psql.Expense, error)
+	GetAllEntries(ctx context.Context, userID int64) ([]psql.Expense, error)
+	GetExpenseById(ctx context.Context, arg psql.GetExpenseByIdParams) (psql.Expense, error)
+	CreateExpense(ctx context.Context, arg psql.CreateExpenseParams) (psql.Expense, error)
+	UpdateExpense(ctx context.Context, arg psql.UpdateExpenseParams) (psql.Expense, error)
+	SoftDeleteExpense(ctx context.Context, arg psql.SoftDeleteExpenseParams) (int64, error)
+	GetTotalSpendThisMonth(ctx context.Context, userID int64) (pgtype.Numeric, error)
+	GetTotalIncomeThisMonth(ctx context.Context, userID int64) (pgtype.Numeric, error)
+	GetDailySpend(ctx context.Context, arg psql.GetDailySpendParams) ([]psql.GetDailySpendRow, error)
+	GetExpensesByMonth(ctx context.Context, arg psql.GetExpensesByMonthParams) ([]psql.Expense, error)
+	GetFirstExpenseDate(ctx context.Context, userID int64) (interface{}, error)
+	GetDailySpendForMonth(ctx context.Context, arg psql.GetDailySpendForMonthParams) ([]psql.GetDailySpendForMonthRow, error)
+	UpsertTag(ctx context.Context, arg psql.UpsertTagParams) (psql.Tag, error)
+	AddTagToExpense(ctx context.Context, arg psql.AddTagToExpenseParams) error
+	WithTx(tx pgx.Tx) ExpenseQuerier
+}
+
+// psqlQueriesWrapper wraps *psql.Queries so its WithTx satisfies ExpenseQuerier.
+type psqlQueriesWrapper struct {
+	*psql.Queries
+}
+
+func (w *psqlQueriesWrapper) WithTx(tx pgx.Tx) ExpenseQuerier {
+	return &psqlQueriesWrapper{w.Queries.WithTx(tx)}
+}
+
+func wrapExpenseQueries(q *psql.Queries) ExpenseQuerier {
+	return &psqlQueriesWrapper{q}
+}
+
 type ExpenseService struct {
 	Queries ExpenseQuerier
 	Pool    *pgxpool.Pool
@@ -74,16 +107,33 @@ func (es *ExpenseService) GetAllEntries(ctx context.Context, userID int64) ([]mo
 	return es.Mapper.MapManyToDomain(entries)
 }
 
+// numericToMonthlyTotal converts a pgtype.Numeric sum into a MonthlyTotal,
+// treating a NULL/invalid value as a zero total.
+func numericToMonthlyTotal(n pgtype.Numeric) (models.MonthlyTotal, error) {
+	f, err := n.Float64Value()
+	if err != nil || !f.Valid {
+		return models.MonthlyTotal{}, err
+	}
+	return models.MonthlyTotal{Total: float32(f.Float64)}, nil
+}
+
 func (es *ExpenseService) GetTotalSpendThisMonth(ctx context.Context, userID int64) (models.MonthlyTotal, error) {
 	total, err := es.Queries.GetTotalSpendThisMonth(ctx, userID)
 	if err != nil {
 		return models.MonthlyTotal{}, err
 	}
+	return numericToMonthlyTotal(total)
+}
+
+// dailySpendFromRow converts a (day, total) pair from a daily-spend query row
+// into a DailySpend. A NULL/invalid total yields a zero-value DailySpend.
+func dailySpendFromRow(day pgtype.Date, total pgtype.Numeric) (models.DailySpend, error) {
 	f, err := total.Float64Value()
 	if err != nil || !f.Valid {
-		return models.MonthlyTotal{}, err
+		return models.DailySpend{}, err
 	}
-	return models.MonthlyTotal{
+	return models.DailySpend{
+		Day:   day.Time.Format("2006-01-02"),
 		Total: float32(f.Float64),
 	}, nil
 }
@@ -98,14 +148,11 @@ func (es *ExpenseService) GetDailySpend(ctx context.Context, userID int64, month
 	}
 	result := make([]models.DailySpend, 0, len(rows))
 	for _, row := range rows {
-		f, err := row.Total.Float64Value()
-		if err != nil || !f.Valid {
+		spend, err := dailySpendFromRow(row.Day, row.Total)
+		if err != nil {
 			return nil, err
 		}
-		result = append(result, models.DailySpend{
-			Day:   row.Day.Time.Format("2006-01-02"),
-			Total: float32(f.Float64),
-		})
+		result = append(result, spend)
 	}
 	return result, nil
 }
@@ -145,14 +192,11 @@ func (es *ExpenseService) GetDailySpendForMonth(ctx context.Context, userID int6
 	}
 	result := make([]models.DailySpend, 0, len(rows))
 	for _, row := range rows {
-		f, err := row.Total.Float64Value()
-		if err != nil || !f.Valid {
+		spend, err := dailySpendFromRow(row.Day, row.Total)
+		if err != nil {
 			return nil, err
 		}
-		result = append(result, models.DailySpend{
-			Day:   row.Day.Time.Format("2006-01-02"),
-			Total: float32(f.Float64),
-		})
+		result = append(result, spend)
 	}
 	return result, nil
 }
@@ -165,6 +209,23 @@ type CreateExpenseInput struct {
 	Cost              float32
 	RecurringSchedule *models.RecurringSchedule
 	InstallmentCount  *int
+}
+
+// recurringScheduleParams builds the recurrence query params from an optional
+// schedule. A nil schedule yields zero (NULL) params; an unparseable start date
+// is rejected with ErrInvalidStartDate.
+func recurringScheduleParams(schedule *models.RecurringSchedule) (interval pgtype.Text, day pgtype.Int4, startDate pgtype.Date, err error) {
+	if schedule == nil {
+		return
+	}
+	start, err := utils.ParseDate(schedule.StartDate)
+	if err != nil {
+		return pgtype.Text{}, pgtype.Int4{}, pgtype.Date{}, ErrInvalidStartDate
+	}
+	return pgtype.Text{String: string(schedule.Interval), Valid: true},
+		pgtype.Int4{Int32: int32(schedule.DayOfMonth), Valid: true},
+		pgtype.Date{Time: start, Valid: true},
+		nil
 }
 
 func (es *ExpenseService) CreateExpense(ctx context.Context, input CreateExpenseInput) (models.Expense, error) {
@@ -180,17 +241,9 @@ func (es *ExpenseService) CreateExpense(ctx context.Context, input CreateExpense
 	if err != nil {
 		return models.Expense{}, err
 	}
-	var recurrenceInterval pgtype.Text
-	var recurrenceDay pgtype.Int4
-	var recurrenceStartDate pgtype.Date
-	if input.RecurringSchedule != nil {
-		startDate, err := utils.ParseDate(input.RecurringSchedule.StartDate)
-		if err != nil {
-			return models.Expense{}, ErrInvalidStartDate
-		}
-		recurrenceInterval = pgtype.Text{String: string(input.RecurringSchedule.Interval), Valid: true}
-		recurrenceDay = pgtype.Int4{Int32: int32(input.RecurringSchedule.DayOfMonth), Valid: true}
-		recurrenceStartDate = pgtype.Date{Time: startDate, Valid: true}
+	recurrenceInterval, recurrenceDay, recurrenceStartDate, err := recurringScheduleParams(input.RecurringSchedule)
+	if err != nil {
+		return models.Expense{}, err
 	}
 	installmentCount, err := installmentCountParam(input.InstallmentCount)
 	if err != nil {
@@ -218,13 +271,7 @@ func (es *ExpenseService) GetTotalIncomeThisMonth(ctx context.Context, userID in
 	if err != nil {
 		return models.MonthlyTotal{}, err
 	}
-	f, err := total.Float64Value()
-	if err != nil || !f.Valid {
-		return models.MonthlyTotal{}, err
-	}
-	return models.MonthlyTotal{
-		Total: float32(f.Float64),
-	}, nil
+	return numericToMonthlyTotal(total)
 }
 
 // installmentCountParam validates an optional installment count and converts it
@@ -327,17 +374,9 @@ func (es *ExpenseService) UpdateExpense(ctx context.Context, input UpdateExpense
 	if err != nil {
 		return models.Expense{}, err
 	}
-	var recurrenceInterval pgtype.Text
-	var recurrenceDay pgtype.Int4
-	var recurrenceStartDate pgtype.Date
-	if input.RecurringSchedule != nil {
-		startDate, err := utils.ParseDate(input.RecurringSchedule.StartDate)
-		if err != nil {
-			return models.Expense{}, ErrInvalidStartDate
-		}
-		recurrenceInterval = pgtype.Text{String: string(input.RecurringSchedule.Interval), Valid: true}
-		recurrenceDay = pgtype.Int4{Int32: int32(input.RecurringSchedule.DayOfMonth), Valid: true}
-		recurrenceStartDate = pgtype.Date{Time: startDate, Valid: true}
+	recurrenceInterval, recurrenceDay, recurrenceStartDate, err := recurringScheduleParams(input.RecurringSchedule)
+	if err != nil {
+		return models.Expense{}, err
 	}
 	installmentCount, err := installmentCountParam(input.InstallmentCount)
 	if err != nil {

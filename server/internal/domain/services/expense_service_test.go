@@ -28,7 +28,7 @@ type stubExpenseQuerier struct {
 	getIncomeFn        func(ctx context.Context, userID int64) (pgtype.Numeric, error)
 	getDailySpendFn    func(ctx context.Context, arg psql.GetDailySpendParams) ([]psql.GetDailySpendRow, error)
 	getByMonthFn       func(ctx context.Context, arg psql.GetExpensesByMonthParams) ([]psql.Expense, error)
-	getFirstDateFn     func(ctx context.Context, userID int64) (interface{}, error)
+	getFirstDateFn     func(ctx context.Context, userID int64) (any, error)
 	getDailyForMonthFn func(ctx context.Context, arg psql.GetDailySpendForMonthParams) ([]psql.GetDailySpendForMonthRow, error)
 	upsertTagFn        func(ctx context.Context, arg psql.UpsertTagParams) (psql.Tag, error)
 	addTagFn           func(ctx context.Context, arg psql.AddTagToExpenseParams) error

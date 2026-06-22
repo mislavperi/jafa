@@ -9,6 +9,13 @@ import (
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 )
 
+// ReportQuerier is the subset of psql.Queries used by ReportService.
+type ReportQuerier interface {
+	ListCategories(ctx context.Context) ([]psql.Category, error)
+	GetAllExpenses(ctx context.Context, userID int64) ([]psql.Expense, error)
+	GetMonthlySpend(ctx context.Context, userID int64) ([]psql.GetMonthlySpendRow, error)
+}
+
 type ReportService struct {
 	Queries        ReportQuerier
 	ExpenseMapper  *mappers.ExpenseMapper
