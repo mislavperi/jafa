@@ -4,29 +4,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mislavperi/jafa/server/internal/domain/dto"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
-	"github.com/mislavperi/jafa/server/internal/domain/services"
+	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 	"github.com/mislavperi/jafa/server/internal/server/httperr"
 )
 
 type PreferencesController struct {
-	preferencesService *services.PreferencesService
+	preferencesService PreferencesService
 }
 
-func NewPreferencesController(preferencesService *services.PreferencesService) *PreferencesController {
+func NewPreferencesController(preferencesService PreferencesService) *PreferencesController {
 	return &PreferencesController{preferencesService: preferencesService}
-}
-
-type upsertPreferencesRequest struct {
-	AccentID             string   `json:"accentId" binding:"required"`
-	FontSize             string   `json:"fontSize" binding:"required"`
-	DarkMode             bool     `json:"darkMode"`
-	Currency             string   `json:"currency"`
-	WeekStart            string   `json:"weekStart"`
-	MonthlyBudget        *float32 `json:"monthlyBudget"`
-	NotifyWeeklySummary  *bool    `json:"notifyWeeklySummary"`
-	NotifyBudgetAlerts   *bool    `json:"notifyBudgetAlerts"`
-	NotifyProductUpdates *bool    `json:"notifyProductUpdates"`
 }
 
 func (pc *PreferencesController) Get() gin.HandlerFunc {
@@ -50,7 +39,7 @@ func (pc *PreferencesController) Upsert() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		var req upsertPreferencesRequest
+		var req requestmodels.UpsertPreferencesRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
@@ -100,7 +89,7 @@ func (pc *PreferencesController) Upsert() gin.HandlerFunc {
 		if req.NotifyProductUpdates != nil {
 			notifyProductUpdates = *req.NotifyProductUpdates
 		}
-		prefs, err := pc.preferencesService.Upsert(ctx.Request.Context(), models.UpsertPreferencesInput{
+		prefs, err := pc.preferencesService.Upsert(ctx.Request.Context(), dto.UpsertPreferencesInput{
 			UserID:               uid,
 			AccentID:             req.AccentID,
 			FontSize:             req.FontSize,

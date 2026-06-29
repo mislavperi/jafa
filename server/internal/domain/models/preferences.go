@@ -53,16 +53,3 @@ type UserPreferences struct {
 	CreatedAt            string  `json:"created_at"`
 	UpdatedAt            string  `json:"updated_at"`
 }
-
-type UpsertPreferencesInput struct {
-	UserID               int64
-	AccentID             string
-	FontSize             string
-	DarkMode             bool
-	Currency             string
-	WeekStart            string
-	MonthlyBudget        float32
-	NotifyWeeklySummary  bool
-	NotifyBudgetAlerts   bool
-	NotifyProductUpdates bool
-}

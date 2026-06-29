@@ -6,35 +6,35 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/mislavperi/jafa/server/internal/domain/apperr"
 	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
-	customerrors "github.com/mislavperi/jafa/server/utils/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
 	Queries *psql.Queries
-	mapper  *mappers.UserMapper
+	Mapper  *mappers.UserMapper
 }
 
-func NewAuthService(queries *psql.Queries) *AuthService {
-	return &AuthService{Queries: queries, mapper: mappers.NewUserMapper()}
+func NewAuthService(pool psql.Pool) *AuthService {
+	return &AuthService{Queries: psql.New(pool), Mapper: mappers.NewUserMapper()}
 }
 
 func (as *AuthService) Login(ctx context.Context, username, password string) (models.User, error) {
 	row, err := as.Queries.GetUserByUsername(ctx, username)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return models.User{}, customerrors.ErrInvalidCredentials
+			return models.User{}, apperr.ErrInvalidCredentials
 		}
 		return models.User{}, err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(row.Password), []byte(password)); err != nil {
-		return models.User{}, customerrors.ErrInvalidCredentials
+		return models.User{}, apperr.ErrInvalidCredentials
 	}
-	return as.mapper.MapFromGetByUsername(row), nil
+	return as.Mapper.MapToDomain(row), nil
 }
 
 // DeleteAccount soft-deletes the user: the row and the user's data stay in the
@@ -46,7 +46,7 @@ func (as *AuthService) DeleteAccount(ctx context.Context, userID int64) error {
 		return err
 	}
 	if rows == 0 {
-		return customerrors.ErrUserNotFound
+		return apperr.ErrUserNotFound
 	}
 	return nil
 }
@@ -66,9 +66,9 @@ func (as *AuthService) Register(ctx context.Context, params requestmodels.Regist
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return models.User{}, customerrors.ErrUsernameTaken
+			return models.User{}, apperr.ErrUsernameTaken
 		}
 		return models.User{}, err
 	}
-	return as.mapper.MapFromCreate(row), nil
+	return as.Mapper.MapCreatedToDomain(row), nil
 }

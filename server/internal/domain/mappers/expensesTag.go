@@ -20,13 +20,5 @@ func (etm *ExpensesTagMapper) MapToDomain(expensesTag psql.ExpensesTag) (models.
 }
 
 func (etm *ExpensesTagMapper) MapManyToDomain(expensesTags []psql.ExpensesTag) ([]models.ExpensesTag, error) {
-	mappedExpensesTags := make([]models.ExpensesTag, 0, len(expensesTags))
-	for _, expensesTag := range expensesTags {
-		mappedExpensesTag, err := etm.MapToDomain(expensesTag)
-		if err != nil {
-			return []models.ExpensesTag{}, err
-		}
-		mappedExpensesTags = append(mappedExpensesTags, mappedExpensesTag)
-	}
-	return mappedExpensesTags, nil
+	return mapSlice(expensesTags, etm.MapToDomain)
 }

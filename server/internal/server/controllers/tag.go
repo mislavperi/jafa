@@ -5,17 +5,16 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/server/internal/domain/services"
 	"github.com/mislavperi/jafa/server/internal/server/httperr"
 
 	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
 )
 
 type TagController struct {
-	tagService *services.TagService
+	tagService TagService
 }
 
-func NewTagController(tagService *services.TagService) *TagController {
+func NewTagController(tagService TagService) *TagController {
 	return &TagController{tagService: tagService}
 }
 
@@ -74,10 +73,6 @@ func (tc *TagController) GetTagsForExpense() gin.HandlerFunc {
 	}
 }
 
-type addTagToExpenseRequest struct {
-	TagID int64 `json:"tag_id" binding:"required"`
-}
-
 func (tc *TagController) AddTagToExpense() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		uid, ok := requireUser(ctx)
@@ -89,7 +84,7 @@ func (tc *TagController) AddTagToExpense() gin.HandlerFunc {
 			httperr.BadRequest(ctx, "invalid expense id", nil)
 			return
 		}
-		var req addTagToExpenseRequest
+		var req requestmodels.AddTagToExpenseRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return

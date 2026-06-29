@@ -14,9 +14,9 @@ type CategoryService struct {
 	Mapper  *mappers.CategoryMapper
 }
 
-func NewCategoryService(queries *psql.Queries) *CategoryService {
+func NewCategoryService(pool psql.Pool) *CategoryService {
 	return &CategoryService{
-		Queries: queries,
+		Queries: psql.New(pool),
 		Mapper:  mappers.NewCategoryMapper(),
 	}
 }

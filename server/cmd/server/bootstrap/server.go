@@ -8,7 +8,6 @@ import (
 
 	"github.com/mislavperi/jafa/server/internal/domain/services"
 	"github.com/mislavperi/jafa/server/internal/infrastructure/psql"
-	psqlrepositories "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 	server "github.com/mislavperi/jafa/server/internal/server"
 	"github.com/mislavperi/jafa/server/internal/server/controllers"
 )
@@ -44,14 +43,12 @@ func Server() *server.Server {
 		panic(err)
 	}
 
-	queries := psqlrepositories.New(connPool)
-
-	expenseService := services.NewExpenseService(queries, connPool)
-	tagService := services.NewTagService(queries)
-	authService := services.NewAuthService(queries)
-	preferencesService := services.NewPreferencesService(queries)
-	categoryService := services.NewCategoryService(queries)
-	reportService := services.NewReportService(queries)
+	expenseService := services.NewExpenseService(connPool)
+	tagService := services.NewTagService(connPool)
+	authService := services.NewAuthService(connPool)
+	preferencesService := services.NewPreferencesService(connPool)
+	categoryService := services.NewCategoryService(connPool)
+	reportService := services.NewReportService(connPool)
 
 	expenseController := controllers.NewExpenseController(expenseService)
 	tagController := controllers.NewTagController(tagService)

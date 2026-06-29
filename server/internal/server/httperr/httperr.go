@@ -29,6 +29,11 @@ func NotFound(ctx *gin.Context, message string) {
 	Respond(ctx, http.StatusNotFound, message, nil)
 }
 
+// Conflict is shorthand for 409.
+func Conflict(ctx *gin.Context, message string) {
+	Respond(ctx, http.StatusConflict, message, nil)
+}
+
 // Internal is shorthand for 500.
 func Internal(ctx *gin.Context, err error) {
 	Respond(ctx, http.StatusInternalServerError, "internal server error", err)

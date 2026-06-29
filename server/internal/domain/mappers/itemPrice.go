@@ -27,13 +27,5 @@ func (ipm *ItemPriceMapper) MapToDomain(itemPrice psql.ItemPrice) (models.ItemPr
 }
 
 func (ipm *ItemPriceMapper) MapManyToDomain(itemPrices []psql.ItemPrice) ([]models.ItemPrice, error) {
-	mappedItemPrices := make([]models.ItemPrice, 0, len(itemPrices))
-	for _, itemPrice := range itemPrices {
-		mappedItemPrice, err := ipm.MapToDomain(itemPrice)
-		if err != nil {
-			return []models.ItemPrice{}, err
-		}
-		mappedItemPrices = append(mappedItemPrices, mappedItemPrice)
-	}
-	return mappedItemPrices, nil
+	return mapSlice(itemPrices, ipm.MapToDomain)
 }

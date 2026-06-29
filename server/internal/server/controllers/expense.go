@@ -1,39 +1,24 @@
 package controllers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mislavperi/jafa/server/internal/domain/dto"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
-	"github.com/mislavperi/jafa/server/internal/domain/services"
 	"github.com/mislavperi/jafa/server/internal/server/httperr"
-	"github.com/mislavperi/jafa/server/internal/server/middleware"
 )
 
-type firstExpenseDateResponse struct {
-	FirstDate string `json:"firstDate"`
-}
-
 type ExpenseController struct {
-	expenseService *services.ExpenseService
+	expenseService ExpenseService
 }
 
-func NewExpenseController(expenseService *services.ExpenseService) *ExpenseController {
+func NewExpenseController(expenseService ExpenseService) *ExpenseController {
 	return &ExpenseController{
 		expenseService: expenseService,
 	}
-}
-
-func requireUser(ctx *gin.Context) (int64, bool) {
-	uid, ok := middleware.CurrentUserID(ctx)
-	if !ok {
-		httperr.Unauthorized(ctx, "authentication required")
-		return 0, false
-	}
-	return uid, true
 }
 
 func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
@@ -55,7 +40,7 @@ func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 				StartDate:  req.RecurringSchedule.StartDate,
 			}
 		}
-		expense, err := ec.expenseService.CreateExpense(ctx.Request.Context(), services.CreateExpenseInput{
+		expense, err := ec.expenseService.CreateExpense(ctx.Request.Context(), dto.CreateExpenseInput{
 			UserID:            uid,
 			Kind:              req.Kind,
 			Name:              req.Name,
@@ -64,12 +49,7 @@ func (ec *ExpenseController) CreateExpense() gin.HandlerFunc {
 			RecurringSchedule: recurringSchedule,
 			InstallmentCount:  req.InstallmentCount,
 		})
-		if err != nil {
-			if errors.Is(err, services.ErrInvalidStartDate) || errors.Is(err, services.ErrInvalidInstallmentCount) || errors.Is(err, services.ErrInvalidKind) {
-				httperr.BadRequest(ctx, err.Error(), err)
-				return
-			}
-			httperr.Internal(ctx, err)
+		if respondExpenseError(ctx, err) {
 			return
 		}
 		ctx.JSON(http.StatusCreated, expense)
@@ -89,9 +69,9 @@ func (ec *ExpenseController) BulkCreateExpenses() gin.HandlerFunc {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
-		items := make([]services.BulkExpenseItem, 0, len(req.Expenses))
+		items := make([]dto.BulkExpenseItem, 0, len(req.Expenses))
 		for _, e := range req.Expenses {
-			items = append(items, services.BulkExpenseItem{
+			items = append(items, dto.BulkExpenseItem{
 				Name:   e.Name,
 				Amount: *e.Amount,
 				Cost:   *e.Cost,
@@ -276,7 +256,7 @@ func (ec *ExpenseController) UpdateExpense() gin.HandlerFunc {
 				StartDate:  req.RecurringSchedule.StartDate,
 			}
 		}
-		expense, err := ec.expenseService.UpdateExpense(ctx.Request.Context(), services.UpdateExpenseInput{
+		expense, err := ec.expenseService.UpdateExpense(ctx.Request.Context(), dto.UpdateExpenseInput{
 			ID:                int64(id),
 			UserID:            uid,
 			Name:              req.Name,
@@ -285,16 +265,7 @@ func (ec *ExpenseController) UpdateExpense() gin.HandlerFunc {
 			RecurringSchedule: recurringSchedule,
 			InstallmentCount:  req.InstallmentCount,
 		})
-		if err != nil {
-			if errors.Is(err, services.ErrExpenseNotFound) {
-				httperr.NotFound(ctx, "expense not found")
-				return
-			}
-			if errors.Is(err, services.ErrInvalidStartDate) || errors.Is(err, services.ErrInvalidInstallmentCount) {
-				httperr.BadRequest(ctx, err.Error(), err)
-				return
-			}
-			httperr.Internal(ctx, err)
+		if respondExpenseError(ctx, err) {
 			return
 		}
 		ctx.JSON(http.StatusOK, expense)
@@ -312,12 +283,7 @@ func (ec *ExpenseController) DeleteExpense() gin.HandlerFunc {
 			httperr.BadRequest(ctx, err.Error(), err)
 			return
 		}
-		if err := ec.expenseService.DeleteExpense(ctx.Request.Context(), uid, int64(id)); err != nil {
-			if errors.Is(err, services.ErrExpenseNotFound) {
-				httperr.NotFound(ctx, "expense not found")
-				return
-			}
-			httperr.Internal(ctx, err)
+		if respondExpenseError(ctx, ec.expenseService.DeleteExpense(ctx.Request.Context(), uid, int64(id))) {
 			return
 		}
 		ctx.Status(http.StatusNoContent)
@@ -336,12 +302,7 @@ func (ec *ExpenseController) GetExpenseById() gin.HandlerFunc {
 			return
 		}
 		expense, err := ec.expenseService.GetById(ctx.Request.Context(), uid, int64(id))
-		if err != nil {
-			if errors.Is(err, services.ErrExpenseNotFound) {
-				httperr.NotFound(ctx, "expense not found")
-				return
-			}
-			httperr.Internal(ctx, err)
+		if respondExpenseError(ctx, err) {
 			return
 		}
 		ctx.JSON(http.StatusOK, expense)

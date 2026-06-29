@@ -54,13 +54,5 @@ func (em *ExpenseMapper) MapToDomain(expense psql.Expense) (models.Expense, erro
 }
 
 func (em *ExpenseMapper) MapManyToDomain(expenses []psql.Expense) ([]models.Expense, error) {
-	mappedExpenses := make([]models.Expense, 0, len(expenses))
-	for _, expense := range expenses {
-		mappedExpense, err := em.MapToDomain(expense)
-		if err != nil {
-			return []models.Expense{}, err
-		}
-		mappedExpenses = append(mappedExpenses, mappedExpense)
-	}
-	return mappedExpenses, nil
+	return mapSlice(expenses, em.MapToDomain)
 }

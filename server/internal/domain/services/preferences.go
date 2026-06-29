@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/mislavperi/jafa/server/internal/domain/dto"
+	"github.com/mislavperi/jafa/server/internal/domain/mappers"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 	"github.com/mislavperi/jafa/server/utils"
@@ -12,31 +14,11 @@ import (
 
 type PreferencesService struct {
 	Queries *psql.Queries
+	Mapper  *mappers.PreferencesMapper
 }
 
-func NewPreferencesService(queries *psql.Queries) *PreferencesService {
-	return &PreferencesService{Queries: queries}
-}
-
-func mapPreferencesRow(row psql.UserPreference) (models.UserPreferences, error) {
-	budget, err := utils.NumericToFloat(row.MonthlyBudget)
-	if err != nil {
-		return models.UserPreferences{}, err
-	}
-	return models.UserPreferences{
-		UserID:               row.UserID,
-		AccentID:             row.AccentID,
-		FontSize:             row.FontSize,
-		DarkMode:             row.DarkMode,
-		Currency:             row.Currency,
-		WeekStart:            row.WeekStart,
-		MonthlyBudget:        budget,
-		NotifyWeeklySummary:  row.NotifyWeeklySummary,
-		NotifyBudgetAlerts:   row.NotifyBudgetAlerts,
-		NotifyProductUpdates: row.NotifyProductUpdates,
-		CreatedAt:            utils.FormatRFC3339(row.CreatedAt),
-		UpdatedAt:            utils.FormatRFC3339(row.UpdatedAt),
-	}, nil
+func NewPreferencesService(pool psql.Pool) *PreferencesService {
+	return &PreferencesService{Queries: psql.New(pool), Mapper: mappers.NewPreferencesMapper()}
 }
 
 func (ps *PreferencesService) Get(ctx context.Context, userID int64) (models.UserPreferences, error) {
@@ -47,10 +29,10 @@ func (ps *PreferencesService) Get(ctx context.Context, userID int64) (models.Use
 		}
 		return models.UserPreferences{}, err
 	}
-	return mapPreferencesRow(row)
+	return ps.Mapper.MapToDomain(row)
 }
 
-func (ps *PreferencesService) Upsert(ctx context.Context, input models.UpsertPreferencesInput) (models.UserPreferences, error) {
+func (ps *PreferencesService) Upsert(ctx context.Context, input dto.UpsertPreferencesInput) (models.UserPreferences, error) {
 	budget, err := utils.FloatToNumeric(input.MonthlyBudget)
 	if err != nil {
 		return models.UserPreferences{}, err
@@ -70,5 +52,5 @@ func (ps *PreferencesService) Upsert(ctx context.Context, input models.UpsertPre
 	if err != nil {
 		return models.UserPreferences{}, err
 	}
-	return mapPreferencesRow(row)
+	return ps.Mapper.MapToDomain(row)
 }

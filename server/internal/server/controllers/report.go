@@ -4,15 +4,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/server/internal/domain/services"
 	"github.com/mislavperi/jafa/server/internal/server/httperr"
 )
 
 type ReportController struct {
-	reportService *services.ReportService
+	reportService ReportService
 }
 
-func NewReportController(reportService *services.ReportService) *ReportController {
+func NewReportController(reportService ReportService) *ReportController {
 	return &ReportController{reportService: reportService}
 }
 

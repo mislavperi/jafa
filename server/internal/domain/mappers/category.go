@@ -32,13 +32,5 @@ func (cm *CategoryMapper) MapToDomain(category psql.Category) (models.Category, 
 }
 
 func (cm *CategoryMapper) MapManyToDomain(categories []psql.Category) ([]models.Category, error) {
-	mapped := make([]models.Category, 0, len(categories))
-	for _, category := range categories {
-		domain, err := cm.MapToDomain(category)
-		if err != nil {
-			return nil, err
-		}
-		mapped = append(mapped, domain)
-	}
-	return mapped, nil
+	return mapSlice(categories, cm.MapToDomain)
 }

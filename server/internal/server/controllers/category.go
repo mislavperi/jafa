@@ -4,15 +4,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mislavperi/jafa/server/internal/domain/services"
 	"github.com/mislavperi/jafa/server/internal/server/httperr"
 )
 
 type CategoryController struct {
-	categoryService *services.CategoryService
+	categoryService CategoryService
 }
 
-func NewCategoryController(categoryService *services.CategoryService) *CategoryController {
+func NewCategoryController(categoryService CategoryService) *CategoryController {
 	return &CategoryController{categoryService: categoryService}
 }
 

@@ -24,13 +24,5 @@ func (tm *TagMapper) MapToDomain(tag psql.Tag) (models.Tag, error) {
 }
 
 func (tm *TagMapper) MapManyToDomain(tags []psql.Tag) ([]models.Tag, error) {
-	mappedTags := make([]models.Tag, 0, len(tags))
-	for _, tag := range tags {
-		mappedTag, err := tm.MapToDomain(tag)
-		if err != nil {
-			return []models.Tag{}, err
-		}
-		mappedTags = append(mappedTags, mappedTag)
-	}
-	return mappedTags, nil
+	return mapSlice(tags, tm.MapToDomain)
 }

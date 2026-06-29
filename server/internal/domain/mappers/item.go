@@ -23,13 +23,5 @@ func (im *ItemMapper) MapToDomain(item psql.Item) (models.Item, error) {
 }
 
 func (im *ItemMapper) MapManyToDomain(items []psql.Item) ([]models.Item, error) {
-	mappedItems := make([]models.Item, 0, len(items))
-	for _, item := range items {
-		mappedItem, err := im.MapToDomain(item)
-		if err != nil {
-			return []models.Item{}, err
-		}
-		mappedItems = append(mappedItems, mappedItem)
-	}
-	return mappedItems, nil
+	return mapSlice(items, im.MapToDomain)
 }

@@ -6,18 +6,18 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/mislavperi/jafa/server/internal/domain/apperr"
 	"github.com/mislavperi/jafa/server/internal/domain/models"
 	requestmodels "github.com/mislavperi/jafa/server/internal/domain/models/request"
-	"github.com/mislavperi/jafa/server/internal/domain/services"
+	"github.com/mislavperi/jafa/server/internal/server/httperr"
 	"github.com/mislavperi/jafa/server/internal/server/middleware"
-	customerrors "github.com/mislavperi/jafa/server/utils/errors"
 )
 
 type AuthController struct {
-	authService *services.AuthService
+	authService AuthService
 }
 
-func NewAuthController(authService *services.AuthService) *AuthController {
+func NewAuthController(authService AuthService) *AuthController {
 	return &AuthController{authService: authService}
 }
 
@@ -34,22 +34,22 @@ func (ac *AuthController) Login() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requestmodels.LoginRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "username and password are required"})
+			httperr.BadRequest(ctx, "username and password are required", err)
 			return
 		}
 		user, err := ac.authService.Login(ctx.Request.Context(), req.Username, req.Password)
-		if errors.Is(err, customerrors.ErrInvalidCredentials) {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
+		if errors.Is(err, apperr.ErrInvalidCredentials) {
+			httperr.Unauthorized(ctx, "invalid username or password")
 			return
 		}
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			httperr.Internal(ctx, err)
 			return
 		}
 		session := sessions.Default(ctx)
 		saveUserToSession(session, user)
 		if err := session.Save(); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})
+			httperr.Respond(ctx, http.StatusInternalServerError, "failed to create session", err)
 			return
 		}
 		ctx.JSON(http.StatusOK, user)
@@ -62,7 +62,7 @@ func (ac *AuthController) Logout() gin.HandlerFunc {
 		session.Clear()
 		session.Options(sessions.Options{MaxAge: -1})
 		if err := session.Save(); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear session"})
+			httperr.Respond(ctx, http.StatusInternalServerError, "failed to clear session", err)
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"message": "logged out"})
@@ -74,7 +74,7 @@ func (ac *AuthController) Me() gin.HandlerFunc {
 		session := sessions.Default(ctx)
 		userID := session.Get(middleware.SessionUserIDKey)
 		if userID == nil {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+			httperr.Unauthorized(ctx, "not authenticated")
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{
@@ -96,21 +96,21 @@ func (ac *AuthController) DeleteAccount() gin.HandlerFunc {
 		session := sessions.Default(ctx)
 		userID, ok := session.Get(middleware.SessionUserIDKey).(int64)
 		if !ok {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "not authenticated"})
+			httperr.Unauthorized(ctx, "not authenticated")
 			return
 		}
 		if err := ac.authService.DeleteAccount(ctx.Request.Context(), userID); err != nil {
-			if errors.Is(err, customerrors.ErrUserNotFound) {
-				ctx.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			if errors.Is(err, apperr.ErrUserNotFound) {
+				httperr.NotFound(ctx, "user not found")
 				return
 			}
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			httperr.Internal(ctx, err)
 			return
 		}
 		session.Clear()
 		session.Options(sessions.Options{MaxAge: -1})
 		if err := session.Save(); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to clear session"})
+			httperr.Respond(ctx, http.StatusInternalServerError, "failed to clear session", err)
 			return
 		}
 		ctx.JSON(http.StatusOK, gin.H{"message": "account deleted"})
@@ -121,7 +121,7 @@ func (ac *AuthController) Register() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		var req requestmodels.RegisterRequest
 		if err := ctx.ShouldBindJSON(&req); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"error": "username and password are required"})
+			httperr.BadRequest(ctx, "username and password are required", err)
 			return
 		}
 		user, err := ac.authService.Register(ctx.Request.Context(), requestmodels.RegisterRequest{
@@ -131,18 +131,18 @@ func (ac *AuthController) Register() gin.HandlerFunc {
 			LastName:  req.LastName,
 			Email:     req.Email,
 		})
-		if errors.Is(err, customerrors.ErrUsernameTaken) {
-			ctx.JSON(http.StatusConflict, gin.H{"error": "username is already taken"})
+		if errors.Is(err, apperr.ErrUsernameTaken) {
+			httperr.Conflict(ctx, "username is already taken")
 			return
 		}
 		if err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			httperr.Internal(ctx, err)
 			return
 		}
 		session := sessions.Default(ctx)
 		saveUserToSession(session, user)
 		if err := session.Save(); err != nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})
+			httperr.Respond(ctx, http.StatusInternalServerError, "failed to create session", err)
 			return
 		}
 		ctx.JSON(http.StatusCreated, user)

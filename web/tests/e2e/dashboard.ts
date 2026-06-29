@@ -150,3 +150,7 @@ describe('Dashboard', function () {
     })
   })
 })
+
+// Mark this file as a module so its top-level declarations are scoped
+// to the file (Nightwatch loads it for its describe() side-effects).
+export {}

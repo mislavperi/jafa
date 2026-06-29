@@ -9,22 +9,15 @@ import (
 	psql "github.com/mislavperi/jafa/server/internal/infrastructure/psql/repositories"
 )
 
-// ReportQuerier is the subset of psql.Queries used by ReportService.
-type ReportQuerier interface {
-	ListCategories(ctx context.Context) ([]psql.Category, error)
-	GetAllExpenses(ctx context.Context, userID int64) ([]psql.Expense, error)
-	GetMonthlySpend(ctx context.Context, userID int64) ([]psql.GetMonthlySpendRow, error)
-}
-
 type ReportService struct {
-	Queries        ReportQuerier
+	Queries        *psql.Queries
 	ExpenseMapper  *mappers.ExpenseMapper
 	CategoryMapper *mappers.CategoryMapper
 }
 
-func NewReportService(queries *psql.Queries) *ReportService {
+func NewReportService(pool psql.Pool) *ReportService {
 	return &ReportService{
-		Queries:        queries,
+		Queries:        psql.New(pool),
 		ExpenseMapper:  mappers.NewExpenseMapper(),
 		CategoryMapper: mappers.NewCategoryMapper(),
 	}
@@ -54,7 +47,7 @@ func (rs *ReportService) CategoryBreakdown(ctx context.Context, userID int64) ([
 	totals := make(map[string]float32, len(categories))
 	for _, expense := range expenses {
 		name := Categorize(expense.Name, categories)
-		totals[name] += expense.Amount
+		totals[name] += expense.Cost
 	}
 
 	breakdown := make([]models.CategoryBreakdown, 0, len(categories))

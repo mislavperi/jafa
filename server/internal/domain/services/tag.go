@@ -13,9 +13,9 @@ type TagService struct {
 	Mapper  *mappers.TagMapper
 }
 
-func NewTagService(queries *psql.Queries) *TagService {
+func NewTagService(pool psql.Pool) *TagService {
 	return &TagService{
-		Queries: queries,
+		Queries: psql.New(pool),
 		Mapper:  mappers.NewTagMapper(),
 	}
 }

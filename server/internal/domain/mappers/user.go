@@ -11,7 +11,10 @@ func NewUserMapper() *UserMapper {
 	return &UserMapper{}
 }
 
-func (um *UserMapper) MapFromGetByUsername(row psql.GetUserByUsernameRow) models.User {
+// MapToDomain converts the row returned by GetUserByUsername (the login path).
+// User has two distinct SQLC source rows, so the create path uses
+// MapCreatedToDomain; both share the MapToDomain naming used by every mapper.
+func (um *UserMapper) MapToDomain(row psql.GetUserByUsernameRow) models.User {
 	return models.User{
 		Id:        row.ID,
 		Username:  row.Username,
@@ -24,7 +27,8 @@ func (um *UserMapper) MapFromGetByUsername(row psql.GetUserByUsernameRow) models
 	}
 }
 
-func (um *UserMapper) MapFromCreate(row psql.CreateUserRow) models.User {
+// MapCreatedToDomain converts the row returned by CreateUser (the register path).
+func (um *UserMapper) MapCreatedToDomain(row psql.CreateUserRow) models.User {
 	return models.User{
 		Id:        row.ID,
 		Username:  row.Username,
